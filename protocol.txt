@@ -1,0 +1,198 @@
+Protocol used by WCHISPTool to flash a CH579 with a 2.8.0 bootloader.
+
+Read the type of the chip
+-------------------------
+
+The type/family in the request appears to not have any effect, but the
+string must be present.
+
+Request.
+0040   a1 12 00 79 13 4d 43 55 20 49 53 50 20 26 20 57   ...y.MCU ISP & W
+0050   43 48 2e 43 4e                                    CH.CN
+
+Response:
+0040   a1 00 02 00 79 13                                 ....y.
+
+Response if request packet doesn't contains the string:
+       a1 00 02 00 f1 00
+
+
+Read the configuration (unique ID, bootloader version, config bits)
+-------------------------------------------------------------------
+
+Request:
+0040   a7 02 00 1f 00                                    .....
+
+Response:
+0040   a7 00 1a 00 1f 00 ff ff ff ff 23 00 00 00 47 52   ..........#...GR
+0050   00 50 00 02 08 00 5f 43 57 e4 c2 84 78 ac         .P...._CW...x.
+
+bootloader = "02 08 00"
+unique ID = "5f 43 57 e4 c2 84 78"
+
+When the 1f in the request varies, other packets or different sizes
+are returned, but with partial information.
+
+Dump - req
+a7 02 00 00 00
+Dump - resp
+a7 00 02 00 00 00
+--> no info
+
+Dump - req
+a7 02 00 07 00
+Dump - resp
+a7 00 0e 00 07 00 ff ff ff ff 23 00 00 00 47 52
+00 50
+--> bit config, 10 bytes
+
+a7 02 00 08 00
+Dump - resp
+a7 00 06 00 08 00 00 02 08 00
+-- bootloader version, 4 bytes
+
+Dump - req
+a7 02 00 10 00
+Dump - resp
+a7 00 0a 00 10 00 5f 43 57 e4 c2 84 78 ac
+--> unique id + checksum byte, 8 bytes.
+
+
+Write a new config
+--------------------
+
+Request:
+0040   a8 0e 00 07 00 ff ff ff ff 23 00 00 00 47 52 00   .........#...GR.
+0050   50                                                P
+
+Response:
+0040   a8 00 02 00 00 00                                 ......
+
+This writes some of the same byte that were returned by the A7 command.
+
+23 -> 21 if download cfg is PB11 instead of PB22. Both are GPIO bidir pins.
+
+47-52-00-50 seems to be register 0x00040010.
+byte 1, bit 3: CFG_RESET_EN   (1=reset pin/button enabled)
+            6: CFG_BOOT_EN    (1=bootloader enabled)
+            7: CFG_ROM_READ   (0=disabled, 1=read allowed)
+byte 3: bits 5-7: VALID_SIG
+
+If CFG_ROM_READ is 0, flashing will fail.
+
+The CH554 has some similar register bits: Code_Protect, No_Boot_Load,
+En_RST_RESET.
+
+
+Send the remote encryption key
+------------------------------
+
+Request:
+0040   a3 36 00 9c 39 a5 09 95 b6 3b 64 6d b3 ea 9e 2c   .6..9....;dm...,
+0050   70 0a 7d 12 79 01 a1 cd 13 13 0a ef d9 7c da 9e   p.}.y........|..
+0060   a7 bc 5c 8d b7 33 46 2c 0a ed 3b 1c 0a bf 94 e6   ..\..3F,..;.....
+0070   6d 93 60 ec 5c 00 a9 a0 d5                        m.`.\....
+
+Response:
+0040   a3 00 02 00 43 00                                 ....C.
+
+The host computes a random 8-byte XOR key and send it obfuscated to
+the host. The request length and content varies each time. The 0x43
+seems to be a checksum.
+
+
+Code flash erase
+----------------
+
+Request
+0040   a4 04 00 08 00 00 00                              .......
+
+Response
+0040   a4 00 02 00 00 00                                 ......
+
+
+Writing to the flash
+--------------------
+
+Request:
+0040   a5 3d 00 00 00 00 00 96 d9 2d 23 d8 dd ea 01 52   .=.......-#....R
+0050   d8 ed 23 d8 c7 ea 01 52 d9 ad 23 f8 54 fb 01 52   ..#....R..#.T..R
+0060   d9 ad 23 f8 54 fb 01 52 d9 ad 23 f8 54 fb 01 52   ..#.T..R..#.T..R
+0070   d9 ad 23 f8 c7 ea 01 52 d9 ad 23 f8 54 fb 01 52   ..#....R..#.T..R
+
+Response:
+0040   a5 00 02 00 00 00                                 ......
+
+The data in the request starts at byte 8, following the address in the
+flash. It is encrypted with the same repeating 8 bytes key. The key
+here is "d9 ad 23 f8 54 fb 01 52" because that's what happens when
+encrypting zeroes with XOR.
+
+That command is repeated many time until all the blocks are
+written. The last block can be shorter.
+
+
+Verifying the flash
+-------------------
+
+Request:
+0040   a6 3d 00 00 00 00 00 96 2c 70 76 eb 2e df 54 a5   .=......,pv...T.
+0050   2d b0 76 eb 34 df 54 a5 2c f0 76 cb a7 ce 54 a5   -.v.4.T.,.v...T.
+0060   2c f0 76 cb a7 ce 54 a5 2c f0 76 cb a7 ce 54 a5   ,.v...T.,.v...T.
+0070   2c f0 76 cb 34 df 54 a5 2c f0 76 cb a7 ce 54 a5   ,.v.4.T.,.v...T.
+
+Response:
+0040   a6 00 02 00 00 00                                 ......
+
+After changing the key with the A3 command, the memory is checked by
+resending the data. This works similarly as the A5 command. This is
+done that way because the flash can't be read when it's protected, so
+asking the device to do the compare is another way to check.
+
+
+Rebooting the device
+--------------------
+
+Request:
+0040   a2 01 00 01                                       ....
+
+Response:
+0040   a2 00 02 00 00 00                                 ......
+
+
+Data flash erase
+----------------
+
+Request:
+0040   a9 05 00 00 00 00 00 02                           ........
+
+Response:
+0040   a9 00 02 00 00 00                                 ......
+
+Data flash write
+----------------
+
+After setting a the encryption key.
+
+Request:
+0040   aa 3d 00 00 00 00 00 0c ca 43 78 f0 00 66 b7 59   .=.......Cx..f.Y
+0050   c0 43 79 f0 00 66 b1 2f c5 7e 41 fa 00 65 b7 59   .Cy..f./.~A..e.Y
+0060   c5 35 7b f0 00 64 b7 59 c0 40 72 f9 3d 5c bd 59   .5{..d.Y.@r.=\.Y
+0070   c3 43 7b f0 03 66 b7 59 c2 43 7b 81 71 62 c2 64   .C{..f.Y.C{.qb.d
+
+
+Data flash read
+---------------
+
+Request:
+0040   ab 06 00 5c 01 00 00 3a 00                        ...\...:.
+
+(offset in flash = 0x015c)
+
+Response:
+0040   ab 00 3c 00 00 00 3a 30 33 30 30 30 30 30 30 30   ..<...:030000000
+0050   32 30 30 30 36 46 35 0d 0a 3a 30 33 30 30 35 46   20006F5..:03005F
+0060   30 30 30 32 30 30 30 33 39 39 0d 0a 3a 30 33 30   0002000399..:030
+0070   30 30 33 30 30 30 32 30 30 41 41 34 45 0d 0a 3a   003000200AA4E..:
+
+The data is not encrypted for some reason.
