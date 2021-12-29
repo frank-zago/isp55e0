@@ -17,8 +17,8 @@ When set in ISP mode, the chip creates a 4348:55e0 USB device, hence
 the name for that project. The bootloader that comes the CH579 is
 version 2.8.0, and that's the only one supported for now.
 
-The main drawback with these devices is that the firmware has to be
-sent encrypted to the device. This is just annoying. The encrypting
+A drawback of these devices is that the firmware has to be sent
+encrypted to the device. This is just annoying. The encrypting
 algorithm is not known to me, but it is rather weak since it's
 vulnerable to a replay attacks. However it's likely the encryption key
 is tied to a device through its unique ID, as it is the case for the

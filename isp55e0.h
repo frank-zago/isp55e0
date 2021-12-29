@@ -74,7 +74,7 @@ struct req_set_key {
 
 struct resp_set_key {
 	struct resp_hdr hdr;
-	uint16_t return_code;
+	uint16_t key_checksum;
 } __attribute__((__packed__));
 
 struct req_erase_flash {

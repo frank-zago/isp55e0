@@ -42,8 +42,11 @@ struct device {
 	uint8_t family;		/* CH55x-> 0x11, CH57x -> 0x13, ...*/
 	uint32_t bv;		/* bootloader version */
 	int mcu_id_len;		/* Number of byte in the unique ID */
+	int xor_key_id_len;	/* Number of ID bytes to use for encryption key */
 	uint8_t id[16];
 };
+
+#define XOR_KEY_LEN 8
 
 static const struct option long_options[] = {
 	{ "bin-file", required_argument, 0,  'f' },
@@ -156,7 +159,7 @@ static void read_config(struct device *dev)
 		errx(EXIT_FAILURE, "Can't get the device configuration");
 
 	dev->bv = be32toh(resp.bootloader_version);
-	memcpy(dev->id, resp.id, dev->mcu_id_len);
+	memcpy(dev->id, resp.id, dev->xor_key_id_len);
 }
 
 /* Write some configuration. Hardcoded for now. */
@@ -232,37 +235,39 @@ static void set_key(struct device *dev)
 {
 	static struct req_set_key req = {
 		.hdr.command = CMD_SET_KEY,
-		.hdr.data_len = 0x36,
-		.data = {
-			0x9c, 0x39, 0xa5, 0x09, 0x95, 0xb6, 0x3b, 0x64,
-			0x6d, 0xb3, 0xea, 0x9e, 0x2c, 0x70, 0x0a, 0x7d,
-			0x12, 0x79, 0x01, 0xa1, 0xcd, 0x13, 0x13, 0x0a,
-			0xef, 0xd9, 0x7c, 0xda, 0x9e, 0xa7, 0xbc, 0x5c,
-			0x8d, 0xb7, 0x33, 0x46, 0x2c, 0x0a, 0xed, 0x3b,
-			0x1c, 0x0a, 0xbf, 0x94, 0xe6, 0x6d, 0x93, 0x60,
-			0xec, 0x5c, 0x00, 0xa9, 0xa0, 0xd5
-		},
+		.hdr.data_len = 0x1e,
 	};
 	struct resp_set_key resp;
-	static const uint8_t xor_key[8] = {
-		0xd9, 0xad, 0x23, 0xf8, 0x54, 0xfb, 0x01, 0x52
-	};
+	uint8_t xor_key[XOR_KEY_LEN] = {};
 	uint8_t *p;
 	int ret;
+	uint8_t sum;
 	int i;
+
+	sum = 0;
+	for (i = 0; i < dev->xor_key_id_len; i++)
+		sum += dev->id[i];
+
+	for (i = 0; i < XOR_KEY_LEN; ++i)
+		xor_key[i] = sum;
+	xor_key[7] += dev->type;
+
+	sum = 0;
+	for (i = 0; i < XOR_KEY_LEN; ++i)
+		sum += xor_key[i];
 
 	ret = transfer(dev, &req, sizeof(struct req_hdr) + req.hdr.data_len,
 		       &resp, sizeof(resp));
 	if (ret)
 		errx(EXIT_FAILURE, "Can't set the key");
 
-	if (resp.return_code != 0x43)
+	if (resp.key_checksum != sum)
 		errx(EXIT_FAILURE, "The device refused the key");
 
 	/* Encrypt the firmware */
 	p = dev->fw_data;
 	for (i = 0; i < dev->fw_len; i++) {
-		*p++ ^= xor_key[i % 8];
+		*p++ ^= xor_key[i % XOR_KEY_LEN];
 	}
 }
 
@@ -368,10 +373,12 @@ int main(int argc, char *argv[])
 	switch (dev.family) {
 	case 0x11:
 		dev.mcu_id_len = 4;
+		dev.xor_key_id_len = 4;
 		break;
 
 	case 0x13:
 		dev.mcu_id_len = 7;
+		dev.xor_key_id_len = 8; /* ID plus checksum byte */
 		break;
 
 	default:

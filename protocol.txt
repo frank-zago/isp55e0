@@ -30,6 +30,8 @@ Response:
 bootloader = "02 08 00"
 unique ID = "5f 43 57 e4 c2 84 78"
 
+0xac is unique id checksum: hex(0x435f + 0xe457 + 0x84c2) == 0xac78
+
 When the 1f in the request varies, other packets or different sizes
 are returned, but with partial information.
 
@@ -97,8 +99,10 @@ Response:
 0040   a3 00 02 00 43 00                                 ....C.
 
 The host computes a random 8-byte XOR key and send it obfuscated to
-the host. The request length and content varies each time. The 0x43
-seems to be a checksum.
+the host. The request length and content varies each time.
+
+The 0x43 is a checksum of the key:
+  0xd9+0xad+0x23+0xf8+0x54+0xfb+0x01+0x52 = 0x443
 
 
 Code flash erase
