@@ -24,6 +24,7 @@ previous bootloaders. There are plenty of other manufacturers who
 don't do that stupid shit.
 
 Tested on:
+- a CH551 with a bootloader version 2.3.1
 - a CH552 with a bootloader version 2.4.0
 - a CH554 with a bootloader version 2.4.0
 - a CH579 with a bootloader version 2.8.0

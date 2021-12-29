@@ -409,6 +409,7 @@ int main(int argc, char *argv[])
 
 	/* check bootloader version */
 	switch (dev.bv) {
+	case 0x020301:
 	case 0x020400:
 		dev.wait_reboot_resp = false;
 		break;
