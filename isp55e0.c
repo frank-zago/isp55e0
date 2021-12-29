@@ -43,7 +43,7 @@ struct device {
 	uint32_t bv;		/* bootloader version */
 	int mcu_id_len;		/* Number of byte in the unique ID */
 	int xor_key_id_len;	/* Number of ID bytes to use for encryption key */
-	uint8_t id[16];
+	uint8_t id[8];
 };
 
 #define XOR_KEY_LEN 8
