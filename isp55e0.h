@@ -50,7 +50,7 @@ struct req_read_config {
 struct resp_read_config {
 	struct resp_hdr hdr;
 	uint16_t what;		/* same as command */
-	uint8_t _u1[12];
+	uint8_t config_data[12];	/* various configuration bits */
 	uint32_t bootloader_version; /* in big endian */
 	uint8_t id[7];		/* chip unique ID */
 	uint8_t id_checksum;
@@ -59,7 +59,7 @@ struct resp_read_config {
 struct req_write_config {
 	struct req_hdr hdr;
 	uint16_t what;		/* bitfield of config types? */
-	uint8_t data[12];
+	uint8_t config_data[12];
 } __attribute__((__packed__));
 
 struct resp_write_config {

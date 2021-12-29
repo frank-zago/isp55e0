@@ -44,6 +44,7 @@ struct device {
 	int mcu_id_len;		/* Number of byte in the unique ID */
 	int xor_key_id_len;	/* Number of ID bytes to use for encryption key */
 	uint8_t id[8];
+	uint8_t config_data[12];
 };
 
 #define XOR_KEY_LEN 8
@@ -160,6 +161,7 @@ static void read_config(struct device *dev)
 
 	dev->bv = be32toh(resp.bootloader_version);
 	memcpy(dev->id, resp.id, dev->xor_key_id_len);
+	memcpy(dev->config_data, resp.config_data, sizeof(dev->config_data));
 }
 
 /* Write some configuration. Hardcoded for now. */
@@ -169,13 +171,11 @@ static void write_config(struct device *dev)
 		.hdr.command = CMD_WRITE_CONFIG,
 		.hdr.data_len = sizeof(req) - sizeof(req.hdr),
 		.what = 0x07,
-		.data = {
-			0xff, 0xff, 0xff, 0xff, 0x23, 0x00, 0x00, 0x00,
-			0x4f, 0x52, 0x00, 0x50
-		},
 	};
 	struct resp_write_config resp;
 	int ret;
+
+	memcpy(req.config_data, dev->config_data, sizeof(req.config_data));
 
 	ret = transfer(dev, &req, sizeof(req), &resp, sizeof(resp));
 	if (ret)
