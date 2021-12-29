@@ -45,6 +45,7 @@ struct device {
 	int xor_key_id_len;	/* Number of ID bytes to use for encryption key */
 	uint8_t id[8];
 	uint8_t config_data[12];
+	bool wait_reboot_resp;	/* wait for reboot command response */
 };
 
 #define XOR_KEY_LEN 8
@@ -320,11 +321,16 @@ static void reboot_device(struct device *dev)
 	int ret;
 
 	ret = transfer(dev, &req, sizeof(req), &resp, sizeof(resp));
+
+	/* 2.4.0 bootloaders do not respond. 2.8.0 does. */
+	if (!dev->wait_reboot_resp)
+		return;
+
 	if (ret)
-		errx(EXIT_FAILURE, "Can't erase the code flash");
+		errx(EXIT_FAILURE, "Can't reboot the device");
 
 	if (resp.return_code != 0x00)
-		errx(EXIT_FAILURE, "The device refused to erase the code flash");
+		errx(EXIT_FAILURE, "The device refused to reboot");
 }
 
 int main(int argc, char *argv[])
@@ -372,11 +378,13 @@ int main(int argc, char *argv[])
 
 	switch (dev.family) {
 	case 0x11:
+		/* CH55x */
 		dev.mcu_id_len = 4;
 		dev.xor_key_id_len = 4;
 		break;
 
 	case 0x13:
+		/* CH57x */
 		dev.mcu_id_len = 7;
 		dev.xor_key_id_len = 8; /* ID plus checksum byte */
 		break;
@@ -400,8 +408,18 @@ int main(int argc, char *argv[])
 	printf("\n");
 
 	/* check bootloader version */
-	if (dev.bv != 0x020800)
+	switch (dev.bv) {
+	case 0x020400:
+		dev.wait_reboot_resp = false;
+		break;
+
+	case 0x020800:
+		dev.wait_reboot_resp = true;
+		break;
+
+	default:
 		errx(EXIT_FAILURE, "This bootloader version is not supported");
+	}
 
 	if (dev.fw_filename) {
 		load_firmware(&dev);
