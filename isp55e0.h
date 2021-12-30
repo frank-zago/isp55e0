@@ -79,7 +79,8 @@ struct resp_set_key {
 
 struct req_erase_flash {
 	struct req_hdr hdr;
-	uint8_t data[4];
+	uint16_t length;	/* size in KiB, possibly just 1 byte to code it. */
+	uint16_t _u1;
 } __attribute__((__packed__));
 
 struct resp_erase_flash {

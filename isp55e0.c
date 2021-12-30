@@ -198,10 +198,17 @@ static void erase_code_flash(struct device *dev)
 	struct req_erase_flash req = {
 		.hdr.command = CMD_ERASE_CODE_FLASH,
 		.hdr.data_len = sizeof(req) - sizeof(req.hdr),
-		.data = { 0x08, 0x00, 0x00, 0x00 },
 	};
 	struct resp_erase_flash resp;
+	int length;
 	int ret;
+
+	/* Erase length is in KiB blocks, with a minimum of 8KiB */
+	length = ((dev->fw_len + 1023) & ~1023) / 1024;
+	if (length < 8)
+		length = 8;
+
+	req.length = length;
 
 	ret = transfer(dev, &req, sizeof(req), &resp, sizeof(resp));
 	if (ret)
