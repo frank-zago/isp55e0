@@ -16,6 +16,9 @@ unmaintained and / or are without a proper license:
 
 So the wheel has to be re-invented.
 
+There is also https://github.com/MarsTechHAN/ch552tool, which I found
+out after starting this project.
+
 A drawback of these devices is that the firmware has to be sent
 encrypted to the device. This is just annoying. The encrypting
 algorithm is not known to me, but it is rather weak since it's
