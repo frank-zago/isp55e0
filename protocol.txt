@@ -201,3 +201,23 @@ Response:
 0070   30 30 33 30 30 30 32 30 30 41 41 34 45 0d 0a 3a   003000200AA4E..:
 
 The data is not encrypted for some reason.
+
+
+
+
+
+Protocol used by WCHISPTool to flash a CH32F103C8T6 with a 2.3.1 bootloader.
+
+Similar to above, except for a few things.
+
+- The unique ID is 8 bytes.
+
+- If the first data bytes of the config are 0xff-0x00, the firmware is
+  write protected. It must be unprotected by writing 0xa5. The next
+  config read will return 0xa5-0x5a in these bytes showing it is ok to
+  write. For some reason WCH tool disconnects the USB device, but this
+  doesn't appear to be needed.
+
+- After flasing the last 56-byte block (or less than), the bootloader
+  must be sent a write with no data. Failing to do so results in a
+  failed firmware check.

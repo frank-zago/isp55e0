@@ -47,6 +47,8 @@ struct device {
 	uint8_t id[8];
 	uint8_t config_data[12];
 	bool wait_reboot_resp;	/* wait for reboot command response */
+	bool need_remove_wp;	/* remove CH32 write protect */
+	bool need_last_write;	/* chip needs an empty write */
 };
 
 #define XOR_KEY_LEN 8
@@ -181,6 +183,9 @@ static void write_config(struct device *dev)
 	int ret;
 
 	memcpy(req.config_data, dev->config_data, sizeof(req.config_data));
+
+	if (dev->need_remove_wp && req.config_data[0] == 0xff)
+		req.config_data[0] = 0xa5;
 
 	ret = transfer(dev, &req, sizeof(req), &resp, sizeof(resp));
 	if (ret)
@@ -321,6 +326,22 @@ static int code_flash_access(struct device *dev, int cmd, int *offset_out)
 		offset += len;
 	}
 
+	if (cmd == CMD_WRITE_CODE_FLASH && dev->need_last_write) {
+		/* The CH32Fx need a last empty write. */
+		req.offset = dev->fw_len;
+		req.hdr.data_len = 5;
+
+		ret = transfer(dev, &req, sizeof(struct req_hdr) + req.hdr.data_len,
+			       &resp, sizeof(resp));
+		if (ret)
+			errx(EXIT_FAILURE, "Write failure at offset %d", offset);
+
+		if (resp.return_code != 0) {
+			*offset_out = offset;
+			return resp.return_code;
+		}
+	}
+
 	return 0;
 }
 
@@ -418,19 +439,28 @@ int main(int argc, char *argv[])
 	open_usb_device(&dev);
 	read_chip_type(&dev);
 
-	printf("Found device CH5%02x\n", dev.type);
-
 	switch (dev.family) {
 	case 0x11:
 		/* CH55x */
 		dev.mcu_id_len = 4;
 		dev.xor_key_id_len = 4;
+		printf("Found device CH5%02x\n", dev.type);
 		break;
 
 	case 0x13:
 		/* CH57x */
 		dev.mcu_id_len = 7;
 		dev.xor_key_id_len = 8; /* ID plus checksum byte */
+		printf("Found device CH5%02x\n", dev.type);
+		break;
+
+	case 0x14:
+		/* CH32F */
+		dev.mcu_id_len = 8;
+		dev.xor_key_id_len = 8;
+		dev.need_remove_wp = true;
+		dev.need_last_write = true;
+		printf("Found device CH32Fx, type %02x\n", dev.type);
 		break;
 
 	default:
