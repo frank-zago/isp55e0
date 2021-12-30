@@ -133,7 +133,8 @@ here is "d9 ad 23 f8 54 fb 01 52" because that's what happens when
 encrypting zeroes with XOR.
 
 That command is repeated many time until all the blocks are
-written. The last block can be shorter.
+written. The last block can be shorter, but its data length should
+still be a multiple of 8 bytes. Extra bytes are added if needed.
 
 
 Verifying the flash

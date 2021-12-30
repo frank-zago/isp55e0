@@ -220,16 +220,18 @@ static void load_firmware(struct device *dev)
 	if (ret == -1)
 		err(EXIT_FAILURE, "Can't get firmware file size");
 
-	dev->fw_len = statbuf.st_size;
+	/* Round up to 8 bytes boundary as upload protocol requires
+	 * it. Extra bytes are zeroes. */
+	dev->fw_len = (statbuf.st_size + 7) & ~7;
 
-	dev->fw_data = malloc(dev->fw_len);
+	dev->fw_data = calloc(1, dev->fw_len);
 	if (dev->fw_data == NULL)
 	    errx(EXIT_FAILURE, "Can't allocate %zd bytes for the firmware",
 		 dev->fw_len);
 
 	/* TODO: loop until all read, or use mmap instead. */
-	ret = read(fd, dev->fw_data, dev->fw_len);
-	if (ret != dev->fw_len)
+	ret = read(fd, dev->fw_data, statbuf.st_size);
+	if (ret != statbuf.st_size)
 		err(EXIT_FAILURE, "Can't read firmware file");
 
 	close(fd);
