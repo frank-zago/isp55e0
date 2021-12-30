@@ -40,3 +40,10 @@ Query the device:
 Flash some firmware:
 
   ./isp55e0 -f fw.bin
+
+Verify an existing firmware against a flashed firmware:
+
+  ./isp55e0 -c fw.bin
+
+Note that if the verification fails, all subsequent verifications will
+fail. The chip has to be power cycled to fix the issue.

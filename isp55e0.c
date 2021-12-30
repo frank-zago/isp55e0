@@ -37,6 +37,7 @@ struct device {
 	char *fw_filename;
 	size_t fw_len;
 	uint8_t *fw_data;
+	bool fw_encrypted;	/* whether the firmware was already encrypted */
 	libusb_device_handle *usb_h;
 	uint8_t type;		/* CH554 -> 0x54, ... */
 	uint8_t family;		/* CH55x-> 0x11, CH57x -> 0x13, ...*/
@@ -51,7 +52,9 @@ struct device {
 #define XOR_KEY_LEN 8
 
 static const struct option long_options[] = {
-	{ "bin-file", required_argument, 0,  'f' },
+	{ "code-verify", required_argument, 0, 'c' },
+	{ "debug", no_argument, 0,  'd' },
+	{ "code-flash", required_argument, 0,  'f' },
 	{ "help", no_argument, 0,  'h' },
 	{ 0, 0, 0, 0 }
 };
@@ -60,9 +63,10 @@ static void usage(void)
 {
 	printf("ISP programmer for WinChipHead CH579\n");
 	printf("Options:\n");
-	printf("  --bin-file, -f    firmware to flash\n");
-	printf("  --debug, -d       turn debug traces on\n");
-	printf("  --help, -h        this help\n");
+	printf("  --code-flash, -f    firmware to flash\n");
+	printf("  --code-verify, -c   verify existing firwmare\n");
+	printf("  --debug, -d         turn debug traces on\n");
+	printf("  --help, -h          this help\n");
 }
 
 static void hexdump(const char *name, const void *data, int len)
@@ -266,16 +270,20 @@ static void set_key(struct device *dev)
 		errx(EXIT_FAILURE, "The device refused the key");
 
 	/* Encrypt the firmware */
-	p = dev->fw_data;
-	for (i = 0; i < dev->fw_len; i++) {
-		*p++ ^= xor_key[i % XOR_KEY_LEN];
+	if (!dev->fw_encrypted) {
+		p = dev->fw_data;
+		for (i = 0; i < dev->fw_len; i++) {
+			*p++ ^= xor_key[i % XOR_KEY_LEN];
+		}
+
+		dev->fw_encrypted = true;
 	}
 }
 
-static void flash(struct device *dev)
+static int code_flash_access(struct device *dev, int cmd, int *offset_out)
 {
 	struct req_write_fw req = {
-		.hdr.command = CMD_WRITE_CODE_FLASH,
+		.hdr.command = cmd,
 	};
 	struct resp_write_fw resp;
 	int offset;
@@ -301,12 +309,37 @@ static void flash(struct device *dev)
 		if (ret)
 			errx(EXIT_FAILURE, "Write failure at offset %d", offset);
 
-		if (resp.return_code != 0)
-			errx(EXIT_FAILURE, "Write failure at offset %d", offset);
+		if (resp.return_code != 0) {
+			*offset_out = offset;
+			return resp.return_code;
+		}
 
 		to_send -= len;
 		offset += len;
 	}
+
+	return 0;
+}
+
+static void code_flash(struct device *dev)
+{
+	int offset;
+	int ret;
+
+	ret = code_flash_access(dev, CMD_WRITE_CODE_FLASH, &offset);
+	if (ret)
+		errx(EXIT_FAILURE, "Write code flash failure at offset %d",
+		     offset);
+}
+
+static void verify_code_flash(struct device *dev)
+{
+	int offset;
+	int ret;
+
+	ret = code_flash_access(dev, CMD_CMP_CODE_FLASH, &offset);
+	if (ret)
+		errx(EXIT_FAILURE, "Check code flash failure at offset %d", offset);
 }
 
 /* Reboot the device */
@@ -336,13 +369,15 @@ static void reboot_device(struct device *dev)
 int main(int argc, char *argv[])
 {
 	struct device dev = {};
+	bool do_code_flash = false;
+	bool do_code_verify = false;
 	int c;
 	int i;
 
 	while (1) {
 		int option_index = 0;
 
-		c = getopt_long(argc, argv, "df:h",
+		c = getopt_long(argc, argv, "c:df:h",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -354,11 +389,17 @@ int main(int argc, char *argv[])
 				printf(" with arg %s", optarg);
 			printf("\n");
 			break;
+		case 'c':
+			dev.fw_filename = optarg;
+			do_code_verify = true;
+			break;
 		case 'd':
 			dev.debug = true;
 			break;
 		case 'f':
 			dev.fw_filename = optarg;
+			do_code_flash = true;
+			do_code_verify = true; /* always verify after flashing */
 			break;
 		case 'h':
 			usage();
@@ -422,19 +463,29 @@ int main(int argc, char *argv[])
 		errx(EXIT_FAILURE, "This bootloader version is not supported");
 	}
 
-	if (dev.fw_filename) {
+	if (dev.fw_filename)
 		load_firmware(&dev);
 
+	if (do_code_flash) {
 		write_config(&dev);
 		set_key(&dev);
 
 		erase_code_flash(&dev);
-		flash(&dev);
-
-		reboot_device(&dev);
+		code_flash(&dev);
 
 		printf("Flashing successful\n");
 	}
+
+	if (do_code_verify) {
+		set_key(&dev);
+
+		verify_code_flash(&dev);
+
+		printf("Firmware is good\n");
+	}
+
+	if (do_code_flash)
+		reboot_device(&dev);
 
 	return 0;
 }
