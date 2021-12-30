@@ -305,7 +305,8 @@ static int code_flash_access(struct device *dev, int cmd, int *offset_out)
 
 		memcpy(&req.data, &dev->fw_data[offset], len);
 
-		ret = transfer(dev, &req, sizeof(req), &resp, sizeof(resp));
+		ret = transfer(dev, &req, sizeof(struct req_hdr) + req.hdr.data_len,
+			       &resp, sizeof(resp));
 		if (ret)
 			errx(EXIT_FAILURE, "Write failure at offset %d", offset);
 
