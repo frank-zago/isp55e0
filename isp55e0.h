@@ -120,14 +120,14 @@ struct resp_erase_flash {
 	uint16_t return_code;
 } __attribute__((__packed__));
 
-struct req_write_fw {
+struct req_flash_rw {
 	struct req_hdr hdr;
 	uint32_t offset;	/* ROM offset */
 	uint8_t _u1;		/* some checksum? */
 	uint8_t data[56];
 } __attribute__((__packed__));
 
-struct resp_write_fw {
+struct resp_flash_rw {
 	struct resp_hdr hdr;
 	uint16_t return_code;
 } __attribute__((__packed__));

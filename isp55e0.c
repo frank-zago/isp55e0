@@ -354,12 +354,13 @@ static void set_key(struct device *dev)
 	}
 }
 
-static int code_flash_access(struct device *dev, int cmd, int *offset_out)
+/* read or write code flash */
+static int flash_rw(struct device *dev, int cmd, int *offset_out)
 {
-	struct req_write_fw req = {
+	struct req_flash_rw req = {
 		.hdr.command = cmd,
 	};
-	struct resp_write_fw resp;
+	struct resp_flash_rw resp;
 	int offset;
 	int to_send;
 	int len;
@@ -412,12 +413,12 @@ static int code_flash_access(struct device *dev, int cmd, int *offset_out)
 	return 0;
 }
 
-static void code_flash(struct device *dev)
+static void write_code_flash(struct device *dev)
 {
 	int offset;
 	int ret;
 
-	ret = code_flash_access(dev, CMD_WRITE_CODE_FLASH, &offset);
+	ret = flash_rw(dev, CMD_WRITE_CODE_FLASH, &offset);
 	if (ret)
 		errx(EXIT_FAILURE, "Write code flash failure at offset %d",
 		     offset);
@@ -428,7 +429,7 @@ static void verify_code_flash(struct device *dev)
 	int offset;
 	int ret;
 
-	ret = code_flash_access(dev, CMD_CMP_CODE_FLASH, &offset);
+	ret = flash_rw(dev, CMD_CMP_CODE_FLASH, &offset);
 	if (ret)
 		errx(EXIT_FAILURE, "Check code flash failure at offset %d", offset);
 }
@@ -543,7 +544,7 @@ int main(int argc, char *argv[])
 		set_key(&dev);
 
 		erase_code_flash(&dev);
-		code_flash(&dev);
+		write_code_flash(&dev);
 
 		printf("Flashing successful\n");
 	}
