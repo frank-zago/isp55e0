@@ -67,7 +67,6 @@ breakout board only show the other USB port, which connects to PA11
 Caveats
 -------
 
-Reading and writing the data flash is not implemented.
 Setting options is not implemented.
 The program will make no attempt to recover from an error and will
 just exit.

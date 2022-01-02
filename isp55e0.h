@@ -35,6 +35,8 @@ struct device {
 	const struct ch_profile *profile;
 	bool debug;
 	struct content fw;
+	struct content data;	/* read data from */
+	struct content data_dump; /* write the data flash into */
 	libusb_device_handle *usb_h;
 	uint32_t bv;		/* bootloader version */
 	uint8_t id[8];
@@ -149,4 +151,27 @@ struct req_reboot {
 struct resp_reboot {
 	struct resp_hdr hdr;
 	uint16_t return_code;
+} __attribute__((__packed__));
+
+struct req_erase_data_flash {
+	struct req_hdr hdr;
+	uint32_t _u1;
+	uint8_t len;		/* length in KB? */
+} __attribute__((__packed__));
+
+struct resp_erase_data_flash {
+	struct resp_hdr hdr;
+	uint16_t return_code;
+} __attribute__((__packed__));
+
+struct req_read_data_flash {
+	struct req_hdr hdr;
+	uint32_t offset;	/* Data offset */
+	uint16_t len;
+} __attribute__((__packed__));
+
+struct resp_read_data_flash {
+	struct resp_hdr hdr;
+	uint16_t return_code;
+	uint8_t data[58];
 } __attribute__((__packed__));

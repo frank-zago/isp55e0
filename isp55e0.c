@@ -97,6 +97,9 @@ static const struct option long_options[] = {
 	{ "debug", no_argument, 0,  'd' },
 	{ "code-flash", required_argument, 0,  'f' },
 	{ "help", no_argument, 0,  'h' },
+	{ "data-flash", required_argument, 0,  'k' },
+	{ "data-verify", required_argument, 0,  'l' },
+	{ "data-dump", required_argument, 0,  'm' },
 	{ 0, 0, 0, 0 }
 };
 
@@ -106,6 +109,9 @@ static void usage(void)
 	printf("Options:\n");
 	printf("  --code-flash, -f    firmware to flash\n");
 	printf("  --code-verify, -c   verify existing firwmare\n");
+	printf("  --data-flash, -k    data to flash\n");
+	printf("  --data-verify, -l   verify existing data\n");
+	printf("  --data-dump, -m     dump the data flash to a file\n");
 	printf("  --debug, -d         turn debug traces on\n");
 	printf("  --help, -h          this help\n");
 }
@@ -181,6 +187,8 @@ static void set_chip_profile(struct device *dev, uint8_t family, uint8_t type)
 		if (profile->family == family && profile->type == type) {
 			dev->profile = profile;
 			dev->fw.max_flash_size = profile->code_flash_size;
+			dev->data.max_flash_size = profile->data_flash_size;
+			dev->data_dump.max_flash_size = profile->data_flash_size;
 			return;
 		}
 
@@ -365,8 +373,9 @@ static void send_key(struct device *dev)
 		errx(EXIT_FAILURE, "The device refused the key");
 }
 
-/* read or write code flash */
-static int flash_rw(struct device *dev, int cmd, int *offset_out)
+/* read or write code flash, or write data flash */
+static int flash_rw(struct device *dev, int cmd, struct content *info,
+		    int *offset_out)
 {
 	struct req_flash_rw req = {
 		.hdr.command = cmd,
@@ -379,7 +388,7 @@ static int flash_rw(struct device *dev, int cmd, int *offset_out)
 
 	/* Send the firmware in 56 bytes chunks */
 	offset = 0;
-	to_send = dev->fw.len;
+	to_send = info->len;
 	while (to_send) {
 		req.offset = offset;
 
@@ -389,7 +398,7 @@ static int flash_rw(struct device *dev, int cmd, int *offset_out)
 
 		req.hdr.data_len = len + 5;
 
-		memcpy(&req.data, &dev->fw.buf[offset], len);
+		memcpy(&req.data, &info->buf[offset], len);
 
 		ret = transfer(dev, &req, sizeof(struct req_hdr) + req.hdr.data_len,
 			       &resp, sizeof(resp));
@@ -407,7 +416,7 @@ static int flash_rw(struct device *dev, int cmd, int *offset_out)
 
 	if (cmd == CMD_WRITE_CODE_FLASH && dev->profile->need_last_write) {
 		/* The CH32Fx need a last empty write. */
-		req.offset = dev->fw.len;
+		req.offset = info->len;
 		req.hdr.data_len = 5;
 
 		ret = transfer(dev, &req, sizeof(struct req_hdr) + req.hdr.data_len,
@@ -429,7 +438,7 @@ static void write_code_flash(struct device *dev)
 	int offset;
 	int ret;
 
-	ret = flash_rw(dev, CMD_WRITE_CODE_FLASH, &offset);
+	ret = flash_rw(dev, CMD_WRITE_CODE_FLASH, &dev->fw, &offset);
 	if (ret)
 		errx(EXIT_FAILURE, "Write code flash failure at offset %d",
 		     offset);
@@ -440,9 +449,120 @@ static void verify_code_flash(struct device *dev)
 	int offset;
 	int ret;
 
-	ret = flash_rw(dev, CMD_CMP_CODE_FLASH, &offset);
+	ret = flash_rw(dev, CMD_CMP_CODE_FLASH, &dev->fw, &offset);
 	if (ret)
 		errx(EXIT_FAILURE, "Check code flash failure at offset %d", offset);
+}
+
+static void erase_data_flash(struct device *dev)
+{
+	struct req_erase_data_flash req = {
+		.hdr.command = CMD_ERASE_DATA_FLASH,
+	};
+	struct resp_erase_data_flash resp;
+	size_t length;
+	int ret;
+
+	/* Erase length is in KiB blocks, with a minimum of 1KiB */
+	length = ((dev->profile->data_flash_size + 1023) & ~1023) / 1024;
+	if (length < 1)
+		length = 1;
+
+	req.len = length;
+
+	ret = transfer(dev, &req, sizeof(req), &resp, sizeof(resp));
+	if (ret)
+		errx(EXIT_FAILURE, "Can't erase the data flash");
+
+	if (resp.return_code != 0x00)
+		errx(EXIT_FAILURE, "The device refused to erase the data flash");
+}
+
+static void write_data_flash(struct device *dev)
+{
+	int ret;
+	int offset;
+
+	ret = flash_rw(dev, CMD_WRITE_DATA_FLASH, &dev->data, &offset);
+	if (ret)
+		errx(EXIT_FAILURE, "Write data flash failure at offset %d",
+		     offset);
+}
+
+static void read_data_flash(struct device *dev)
+{
+	struct req_read_data_flash req = {
+		.hdr.command = CMD_READ_DATA_FLASH,
+	};
+	struct resp_read_data_flash resp;
+	int to_read;
+	int offset;
+	int len;
+	int ret;
+
+	to_read = dev->data_dump.max_flash_size;
+
+	dev->data_dump.len = to_read;
+	dev->data_dump.buf = calloc(1, to_read);
+	if (!dev->data_dump.buf)
+		errx(EXIT_FAILURE, "Can't allocate %u bytes for the data flash",
+		     to_read);
+
+	offset = 0;
+
+	while (to_read) {
+		req.offset = offset;
+
+		len = sizeof(resp.data);
+		if (len > to_read)
+			len = to_read;
+
+		req.len = len;
+
+		ret = transfer(dev, &req, sizeof(req), &resp, sizeof(resp));
+		if (ret)
+			errx(EXIT_FAILURE, "Data read failure at offset %d", offset);
+
+		if (resp.return_code != 0)
+			errx(EXIT_FAILURE, "Data read failure at offset %d", offset);
+
+		memcpy(&dev->data_dump.buf[offset], resp.data, len);
+
+		to_read -= len;
+		offset += len;
+	}
+}
+
+static void verify_data_flash(struct device *dev)
+{
+	if (dev->data.encrypted) {
+		/* The data was just written previously to the flash,
+		 * and encrypted. It needs to been decrypted now so
+		 * the comparison can happen. */
+		encrypt(dev, &dev->data);
+	}
+
+	if (memcmp(dev->data.buf, dev->data_dump.buf, dev->data.len) != 0)
+		errx(EXIT_FAILURE, "Data flash doesn't match");
+}
+
+static void dump_data_flash(struct device *dev)
+{
+	int fd;
+	int ret;
+
+	fd = creat(dev->data_dump.filename, 0600);
+	if (fd == -1)
+		err(EXIT_FAILURE, "Can't create the file to dump the data flash");
+
+	ret = write(fd, dev->data_dump.buf, dev->data.max_flash_size);
+	if (ret == -1)
+		err(EXIT_FAILURE, "Can't dump the data flash");
+
+	if (ret != dev->profile->data_flash_size)
+		err(EXIT_FAILURE, "Can't dump all the data flash to file");
+
+	close(fd);
 }
 
 /* Reboot the device */
@@ -474,13 +594,16 @@ int main(int argc, char *argv[])
 	struct device dev = {};
 	bool do_code_flash = false;
 	bool do_code_verify = false;
+	bool do_data_flash = false;
+	bool do_data_verify = false;
+	bool do_data_dump = false;
 	int c;
 	int i;
 
 	while (1) {
 		int option_index = 0;
 
-		c = getopt_long(argc, argv, "c:df:h",
+		c = getopt_long(argc, argv, "c:df:hk:l:m:",
 				long_options, &option_index);
 		if (c == -1)
 			break;
@@ -503,6 +626,19 @@ int main(int argc, char *argv[])
 			dev.fw.filename = optarg;
 			do_code_flash = true;
 			do_code_verify = true; /* always verify after flashing */
+			break;
+		case 'k':
+			dev.data.filename = optarg;
+			do_data_flash = true;
+			do_data_verify = true;
+			break;
+		case 'l':
+			dev.data.filename = optarg;
+			do_data_verify = true;
+			break;
+		case 'm':
+			dev.data_dump.filename = optarg;
+			do_data_dump = true;
 			break;
 		case 'h':
 			usage();
@@ -552,9 +688,15 @@ int main(int argc, char *argv[])
 	if (do_code_flash || do_code_verify) {
 		load_file(&dev, &dev.fw);
 		encrypt(&dev, &dev.fw);
-
-		send_key(&dev);
 	}
+
+	if (do_data_flash || do_data_verify)
+		load_file(&dev, &dev.data);
+
+	if (do_code_flash || do_code_verify || do_data_flash)
+		send_key(&dev);
+
+	/* Code flash */
 
 	if (do_code_flash) {
 		write_config(&dev);
@@ -562,13 +704,38 @@ int main(int argc, char *argv[])
 		erase_code_flash(&dev);
 		write_code_flash(&dev);
 
-		printf("Flashing successful\n");
+		printf("Code flashing successful\n");
 	}
 
 	if (do_code_verify) {
 		verify_code_flash(&dev);
 
 		printf("Firmware is good\n");
+	}
+
+	/* Data flash */
+
+	if (do_data_flash) {
+		encrypt(&dev, &dev.data);
+		erase_data_flash(&dev);
+		write_data_flash(&dev);
+
+		printf("Data flashing successful\n");
+	}
+
+	if (do_data_verify || do_data_dump)
+		read_data_flash(&dev);
+
+	if (do_data_verify) {
+		verify_data_flash(&dev);
+
+		printf("Data flash is good\n");
+	}
+
+	if (do_data_dump) {
+		dump_data_flash(&dev);
+
+		printf("Dumped data flash to file\n");
 	}
 
 	if (do_code_flash)
