@@ -19,14 +19,19 @@ struct ch_profile {
 	bool need_last_write;	/* chip needs an empty write */
 };
 
+/* Content of either a file or one of the flash section */
+struct content {
+	char *filename;
+	bool encrypted;	/* whether the data in buf has been encrypted */
+	size_t len;
+	uint8_t *buf;
+};
+
 /* Current device */
 struct device {
 	const struct ch_profile *profile;
 	bool debug;
-	char *fw_filename;
-	size_t fw_len;
-	uint8_t *fw_data;
-	bool fw_encrypted;	/* whether the firmware was already encrypted */
+	struct content fw;
 	libusb_device_handle *usb_h;
 	uint32_t bv;		/* bootloader version */
 	uint8_t id[8];

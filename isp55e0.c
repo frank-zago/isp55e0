@@ -261,7 +261,7 @@ static void erase_code_flash(struct device *dev)
 	int ret;
 
 	/* Erase length is in KiB blocks, with a minimum of 8KiB */
-	length = ((dev->fw_len + 1023) & ~1023) / 1024;
+	length = ((dev->fw.len + 1023) & ~1023) / 1024;
 	if (length < 8)
 		length = 8;
 
@@ -281,7 +281,7 @@ static void load_firmware(struct device *dev)
 	int ret;
 	int fd;
 
-	fd = open(dev->fw_filename, O_RDONLY);
+	fd = open(dev->fw.filename, O_RDONLY);
 	if (fd == -1)
 		err(EXIT_FAILURE, "Can't open the firmware file");
 
@@ -291,18 +291,18 @@ static void load_firmware(struct device *dev)
 
 	/* Round up to 8 bytes boundary as upload protocol requires
 	 * it. Extra bytes are zeroes. */
-	dev->fw_len = (statbuf.st_size + 7) & ~7;
+	dev->fw.len = (statbuf.st_size + 7) & ~7;
 
-	if (dev->fw_len > dev->profile->code_flash_size)
+	if (dev->fw.len > dev->profile->code_flash_size)
 		errx(EXIT_FAILURE, "Firmware cannot fit in flash");
 
-	dev->fw_data = calloc(1, dev->fw_len);
-	if (dev->fw_data == NULL)
+	dev->fw.buf = calloc(1, dev->fw.len);
+	if (dev->fw.buf == NULL)
 	    errx(EXIT_FAILURE, "Can't allocate %zd bytes for the firmware",
-		 dev->fw_len);
+		 dev->fw.len);
 
 	/* TODO: loop until all read, or use mmap instead. */
-	ret = read(fd, dev->fw_data, statbuf.st_size);
+	ret = read(fd, dev->fw.buf, statbuf.st_size);
 	if (ret != statbuf.st_size)
 		err(EXIT_FAILURE, "Can't read firmware file");
 
@@ -344,13 +344,13 @@ static void set_key(struct device *dev)
 		errx(EXIT_FAILURE, "The device refused the key");
 
 	/* Encrypt the firmware */
-	if (!dev->fw_encrypted) {
-		p = dev->fw_data;
-		for (i = 0; i < dev->fw_len; i++) {
+	if (!dev->fw.encrypted) {
+		p = dev->fw.buf;
+		for (i = 0; i < dev->fw.len; i++) {
 			*p++ ^= xor_key[i % XOR_KEY_LEN];
 		}
 
-		dev->fw_encrypted = true;
+		dev->fw.encrypted = true;
 	}
 }
 
@@ -368,7 +368,7 @@ static int flash_rw(struct device *dev, int cmd, int *offset_out)
 
 	/* Send the firmware in 56 bytes chunks */
 	offset = 0;
-	to_send = dev->fw_len;
+	to_send = dev->fw.len;
 	while (to_send) {
 		req.offset = offset;
 
@@ -378,7 +378,7 @@ static int flash_rw(struct device *dev, int cmd, int *offset_out)
 
 		req.hdr.data_len = len + 5;
 
-		memcpy(&req.data, &dev->fw_data[offset], len);
+		memcpy(&req.data, &dev->fw.buf[offset], len);
 
 		ret = transfer(dev, &req, sizeof(struct req_hdr) + req.hdr.data_len,
 			       &resp, sizeof(resp));
@@ -396,7 +396,7 @@ static int flash_rw(struct device *dev, int cmd, int *offset_out)
 
 	if (cmd == CMD_WRITE_CODE_FLASH && dev->profile->need_last_write) {
 		/* The CH32Fx need a last empty write. */
-		req.offset = dev->fw_len;
+		req.offset = dev->fw.len;
 		req.hdr.data_len = 5;
 
 		ret = transfer(dev, &req, sizeof(struct req_hdr) + req.hdr.data_len,
@@ -482,14 +482,14 @@ int main(int argc, char *argv[])
 			printf("\n");
 			break;
 		case 'c':
-			dev.fw_filename = optarg;
+			dev.fw.filename = optarg;
 			do_code_verify = true;
 			break;
 		case 'd':
 			dev.debug = true;
 			break;
 		case 'f':
-			dev.fw_filename = optarg;
+			dev.fw.filename = optarg;
 			do_code_flash = true;
 			do_code_verify = true; /* always verify after flashing */
 			break;
@@ -536,7 +536,7 @@ int main(int argc, char *argv[])
 		errx(EXIT_FAILURE, "This bootloader version is not supported");
 	}
 
-	if (dev.fw_filename)
+	if (dev.fw.filename)
 		load_firmware(&dev);
 
 	if (do_code_flash) {
