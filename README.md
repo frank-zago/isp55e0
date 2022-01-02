@@ -13,19 +13,9 @@ unmaintained and / or are without a proper license:
   * https://github.com/rgwan/librech551
   * https://github.com/NgoHungCuong/vnproch551
   * https://github.com/LoveMHz/vnproch55x   (descendant of vnproch551)
+  * https://github.com/MarsTechHAN/ch552tool  (in python)
 
 So the wheel has to be re-invented.
-
-There is also https://github.com/MarsTechHAN/ch552tool, which I found
-out after starting this project.
-
-A drawback of these devices is that the firmware has to be sent
-encrypted to the device. This is just annoying. The encrypting
-algorithm is not known to me, but it is rather weak since it's
-vulnerable to a replay attacks. However it's likely the encryption key
-is tied to a device through its unique ID, as it is the case for the
-previous bootloaders. There are plenty of other manufacturers who
-don't do that stupid shit.
 
 Tested on:
 - a CH551 with a bootloader version 2.3.1
@@ -36,8 +26,34 @@ Tested on:
 - a CH32F103C8T6 with a bootloader version 2.3.1
 
 
+Build
+-----
+
+It needs the libusb development package. On Debian / Ubuntu, install
+the "libusb-1.0-0-dev" package. In rpm world, it is usually called
+"libusb1-devel".
+
+Type:
+
+  make
+
+
 Usage
 -----
+
+Help:
+
+  ./isp55e0 --help
+
+  ISP programmer for some WinChipHead MCUs
+  Options:
+    --code-flash, -f    firmware to flash
+    --code-verify, -c   verify existing firwmare
+    --data-flash, -k    data to flash
+    --data-verify, -l   verify existing data
+    --data-dump, -m     dump the data flash to a file
+    --debug, -d         turn debug traces on
+    --help, -h          this help
 
 Query the device:
 
@@ -62,6 +78,28 @@ That chip has 2 USB ports, and only one is exposed. The USB port used
 by the bootloader connects to PB6 (D-) and PB7 (D+), while the
 breakout board only show the other USB port, which connects to PA11
 (D-) and PA12 (D+).
+
+There are some breakout boards with 2 USB ports, so soldering may not
+be needed on these.
+
+
+Note on the firmware encryption
+-------------------------------
+
+A drawback of these devices is that the firmware has to be sent
+encrypted to the device. The host creates the key, which is sent
+garbled and hidden amongst garbage bytes to the bootloader. The
+bootloader extracts the key from predetermined offsets in the packet
+and will use it later to decrypt the data before flashing or
+comparing. As it's a simple fixed size xor key, it's rather easy to
+figure it out, but this is just plain stupid. Since the last byte of
+the key is the sum of the first byte plus the chip type, it is not
+possible to create a fake key full of zeroes.
+
+There are plenty of other manufacturers who don't do that stupid shit.
+
+For some reason, the data flash is different. Writing to it has to be
+encrypted, but reading from it is in clear.
 
 
 Caveats
