@@ -205,6 +205,9 @@ static void read_chip_type(struct device *dev)
 	if (ret)
 		errx(EXIT_FAILURE, "Can't get the device type");
 
+	if (resp.family == 0)
+		errx(EXIT_FAILURE, "Chip is hosed. Reset or power cycle it.");
+
 	set_chip_profile(dev, resp.family, resp.type);
 }
 
