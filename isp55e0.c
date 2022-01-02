@@ -1,5 +1,5 @@
 /*
- * ISP-55E0 - a basic ISP programmer for the WinChipHead CH579
+ * ISP-55E0 - an ISP programmer for some WinChipHead MCU families
  * Copyright 2021 Frank Zago
  *
  * This program is free software: you can redistribute it and/or modify
@@ -105,7 +105,7 @@ static const struct option long_options[] = {
 
 static void usage(void)
 {
-	printf("ISP programmer for WinChipHead CH579\n");
+	printf("ISP programmer for some WinChipHead MCUs\n");
 	printf("Options:\n");
 	printf("  --code-flash, -f    firmware to flash\n");
 	printf("  --code-verify, -c   verify existing firwmare\n");
