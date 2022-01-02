@@ -32,26 +32,67 @@
 
 #include "isp55e0.h"
 
-struct device {
-	bool debug;
-	char *fw_filename;
-	size_t fw_len;
-	uint8_t *fw_data;
-	bool fw_encrypted;	/* whether the firmware was already encrypted */
-	libusb_device_handle *usb_h;
-	uint8_t type;		/* CH554 -> 0x54, ... */
-	uint8_t family;		/* CH55x-> 0x11, CH57x -> 0x13, ...*/
-	uint32_t bv;		/* bootloader version */
-	int mcu_id_len;		/* Number of byte in the unique ID */
-	int xor_key_id_len;	/* Number of ID bytes to use for encryption key */
-	uint8_t id[8];
-	uint8_t config_data[12];
-	bool wait_reboot_resp;	/* wait for reboot command response */
-	bool need_remove_wp;	/* remove CH32 write protect */
-	bool need_last_write;	/* chip needs an empty write */
-};
-
 #define XOR_KEY_LEN 8
+
+/* Profile of supported chips */
+static const struct ch_profile profiles[] = {
+	{
+		.name = "CH551",
+		.family = 0x11,
+		.type = 0x51,
+		.code_flash_size = 10240,
+		.data_flash_size = 128,
+		.mcu_id_len = 4,
+		.xor_key_id_len = 4,
+	},
+	{
+		.name = "CH552",
+		.family = 0x11,
+		.type = 0x54,
+		.code_flash_size = 14336,
+		.data_flash_size = 128,
+		.mcu_id_len = 4,
+		.xor_key_id_len = 4,
+	},
+	{
+		.name = "CH554",
+		.family = 0x11,
+		.type = 0x54,
+		.code_flash_size = 14336,
+		.data_flash_size = 128,
+		.mcu_id_len = 4,
+		.xor_key_id_len = 4,
+	},
+	{
+		.name = "CH559",
+		.family = 0x11,
+		.type = 0x54,
+		.code_flash_size = 61440,
+		.data_flash_size = 1024,
+		.mcu_id_len = 4,
+		.xor_key_id_len = 4,
+	},
+	{
+		.name = "CH579",
+		.family = 0x13,
+		.type = 0x79,
+		.code_flash_size = 256000,
+		.data_flash_size = 2048,
+		.mcu_id_len = 7,
+		.xor_key_id_len = 8, /* ID plus checksum byte */
+	},
+	{
+		.name = "CH32F103",
+		.family = 0x14,
+		.type = 0x3f,
+		.code_flash_size = 65536,
+		.mcu_id_len = 8,
+		.xor_key_id_len = 8,
+		.need_remove_wp = true,
+		.need_last_write = true,
+	},
+	{}
+};
 
 static const struct option long_options[] = {
 	{ "code-verify", required_argument, 0, 'c' },
@@ -134,6 +175,23 @@ static int transfer(struct device *dev, void *req, int req_len,
 	return 0;
 }
 
+static void set_chip_profile(struct device *dev, uint8_t family, uint8_t type)
+{
+	const struct ch_profile *profile = profiles;
+
+	while (profile->name) {
+		if (profile->family == family && profile->type == type) {
+			dev->profile = profile;
+			return;
+		}
+
+		profile++;
+	}
+
+	errx(EXIT_FAILURE, "Device family %02x type %02x is not supported\n",
+	     family, type);
+}
+
 static void read_chip_type(struct device *dev)
 {
 	struct req_get_chip_type req = {
@@ -148,8 +206,7 @@ static void read_chip_type(struct device *dev)
 	if (ret)
 		errx(EXIT_FAILURE, "Can't get the device type");
 
-	dev->type = resp.type;
-	dev->family = resp.family;
+	set_chip_profile(dev, resp.family, resp.type);
 }
 
 static void read_config(struct device *dev)
@@ -167,7 +224,7 @@ static void read_config(struct device *dev)
 		errx(EXIT_FAILURE, "Can't get the device configuration");
 
 	dev->bv = be32toh(resp.bootloader_version);
-	memcpy(dev->id, resp.id, dev->xor_key_id_len);
+	memcpy(dev->id, resp.id, dev->profile->xor_key_id_len);
 	memcpy(dev->config_data, resp.config_data, sizeof(dev->config_data));
 }
 
@@ -184,7 +241,7 @@ static void write_config(struct device *dev)
 
 	memcpy(req.config_data, dev->config_data, sizeof(req.config_data));
 
-	if (dev->need_remove_wp && req.config_data[0] == 0xff)
+	if (dev->profile->need_remove_wp && req.config_data[0] == 0xff)
 		req.config_data[0] = 0xa5;
 
 	ret = transfer(dev, &req, sizeof(req), &resp, sizeof(resp));
@@ -264,15 +321,15 @@ static void set_key(struct device *dev)
 	int i;
 
 	sum = 0;
-	for (i = 0; i < dev->xor_key_id_len; i++)
+	for (i = 0; i < dev->profile->xor_key_id_len; i++)
 		sum += dev->id[i];
 
-	for (i = 0; i < XOR_KEY_LEN; ++i)
+	for (i = 0; i < XOR_KEY_LEN; i++)
 		xor_key[i] = sum;
-	xor_key[7] += dev->type;
+	xor_key[7] += dev->profile->type;
 
 	sum = 0;
-	for (i = 0; i < XOR_KEY_LEN; ++i)
+	for (i = 0; i < XOR_KEY_LEN; i++)
 		sum += xor_key[i];
 
 	ret = transfer(dev, &req, sizeof(struct req_hdr) + req.hdr.data_len,
@@ -333,7 +390,7 @@ static int code_flash_access(struct device *dev, int cmd, int *offset_out)
 		offset += len;
 	}
 
-	if (cmd == CMD_WRITE_CODE_FLASH && dev->need_last_write) {
+	if (cmd == CMD_WRITE_CODE_FLASH && dev->profile->need_last_write) {
 		/* The CH32Fx need a last empty write. */
 		req.offset = dev->fw_len;
 		req.hdr.data_len = 5;
@@ -445,35 +502,7 @@ int main(int argc, char *argv[])
 
 	open_usb_device(&dev);
 	read_chip_type(&dev);
-
-	switch (dev.family) {
-	case 0x11:
-		/* CH55x */
-		dev.mcu_id_len = 4;
-		dev.xor_key_id_len = 4;
-		printf("Found device CH5%02x\n", dev.type);
-		break;
-
-	case 0x13:
-		/* CH57x */
-		dev.mcu_id_len = 7;
-		dev.xor_key_id_len = 8; /* ID plus checksum byte */
-		printf("Found device CH5%02x\n", dev.type);
-		break;
-
-	case 0x14:
-		/* CH32F */
-		dev.mcu_id_len = 8;
-		dev.xor_key_id_len = 8;
-		dev.need_remove_wp = true;
-		dev.need_last_write = true;
-		printf("Found device CH32Fx, type %02x\n", dev.type);
-		break;
-
-	default:
-		printf("Device family %02x is not supported\n", dev.family);
-		return 1;
-	}
+	printf("Found device %s\n", dev.profile->name);
 
 	read_config(&dev);
 
@@ -481,7 +510,7 @@ int main(int argc, char *argv[])
 	       (dev.bv >> 16) & 0xff, (dev.bv >> 8) & 0xff, dev.bv & 0xff);
 
 	printf("Unique chip ID ");
-	for (i = 0; i < dev.mcu_id_len; i++) {
+	for (i = 0; i < dev.profile->mcu_id_len; i++) {
 		if (i > 0)
 			printf("-");
 		printf("%02x", dev.id[i]);

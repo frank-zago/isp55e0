@@ -2,6 +2,38 @@
 #define EP_OUT 0x02
 #define EP_IN 0x82
 
+/* Profile of a specific CH device */
+struct ch_profile {
+	const char *name;
+
+	uint8_t type;		/* CH554 -> 0x54, ... */
+	uint8_t family;		/* CH55x-> 0x11, CH57x -> 0x13, ...*/
+
+	int mcu_id_len;		/* Number of byte in the unique ID */
+	int xor_key_id_len;	/* Number of ID bytes to use for encryption key */
+
+	int code_flash_size;
+	int data_flash_size;
+
+	bool need_remove_wp;	/* remove CH32 write protect */
+	bool need_last_write;	/* chip needs an empty write */
+};
+
+/* Current device */
+struct device {
+	const struct ch_profile *profile;
+	bool debug;
+	char *fw_filename;
+	size_t fw_len;
+	uint8_t *fw_data;
+	bool fw_encrypted;	/* whether the firmware was already encrypted */
+	libusb_device_handle *usb_h;
+	uint32_t bv;		/* bootloader version */
+	uint8_t id[8];
+	uint8_t config_data[12];
+	bool wait_reboot_resp;	/* wait for reboot command response */
+};
+
 /* Enough to erase the flash. */
 #define USB_TIMEOUT 5000
 
