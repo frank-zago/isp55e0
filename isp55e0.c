@@ -293,6 +293,9 @@ static void load_firmware(struct device *dev)
 	 * it. Extra bytes are zeroes. */
 	dev->fw_len = (statbuf.st_size + 7) & ~7;
 
+	if (dev->fw_len > dev->profile->code_flash_size)
+		errx(EXIT_FAILURE, "Firmware cannot fit in flash");
+
 	dev->fw_data = calloc(1, dev->fw_len);
 	if (dev->fw_data == NULL)
 	    errx(EXIT_FAILURE, "Can't allocate %zd bytes for the firmware",
