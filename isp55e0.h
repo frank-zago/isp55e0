@@ -24,6 +24,7 @@ struct content {
 	char *filename;
 	bool encrypted;	/* whether the data in buf has been encrypted */
 	size_t len;
+	size_t max_flash_size;
 	uint8_t *buf;
 };
 

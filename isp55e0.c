@@ -182,6 +182,7 @@ static void set_chip_profile(struct device *dev, uint8_t family, uint8_t type)
 	while (profile->name) {
 		if (profile->family == family && profile->type == type) {
 			dev->profile = profile;
+			dev->fw.max_flash_size = profile->code_flash_size;
 			return;
 		}
 
@@ -275,13 +276,13 @@ static void erase_code_flash(struct device *dev)
 		errx(EXIT_FAILURE, "The device refused to erase the code flash");
 }
 
-static void load_firmware(struct device *dev)
+static void load_file(struct device *dev, struct content *info)
 {
 	struct stat statbuf;
 	int ret;
 	int fd;
 
-	fd = open(dev->fw.filename, O_RDONLY);
+	fd = open(info->filename, O_RDONLY);
 	if (fd == -1)
 		err(EXIT_FAILURE, "Can't open the firmware file");
 
@@ -291,18 +292,18 @@ static void load_firmware(struct device *dev)
 
 	/* Round up to 8 bytes boundary as upload protocol requires
 	 * it. Extra bytes are zeroes. */
-	dev->fw.len = (statbuf.st_size + 7) & ~7;
+	info->len = (statbuf.st_size + 7) & ~7;
 
-	if (dev->fw.len > dev->profile->code_flash_size)
+	if (info->len > info->max_flash_size)
 		errx(EXIT_FAILURE, "Firmware cannot fit in flash");
 
-	dev->fw.buf = calloc(1, dev->fw.len);
-	if (dev->fw.buf == NULL)
+	info->buf = calloc(1, info->len);
+	if (info->buf == NULL)
 	    errx(EXIT_FAILURE, "Can't allocate %zd bytes for the firmware",
-		 dev->fw.len);
+		 info->len);
 
 	/* TODO: loop until all read, or use mmap instead. */
-	ret = read(fd, dev->fw.buf, statbuf.st_size);
+	ret = read(fd, info->buf, statbuf.st_size);
 	if (ret != statbuf.st_size)
 		err(EXIT_FAILURE, "Can't read firmware file");
 
@@ -537,7 +538,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (dev.fw.filename)
-		load_firmware(&dev);
+		load_file(&dev, &dev.fw);
 
 	if (do_code_flash) {
 		write_config(&dev);
