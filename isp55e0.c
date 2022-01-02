@@ -32,8 +32,6 @@
 
 #include "isp55e0.h"
 
-#define XOR_KEY_LEN 8
-
 /* Profile of supported chips */
 static const struct ch_profile profiles[] = {
 	{
@@ -310,17 +308,23 @@ static void load_file(struct device *dev, struct content *info)
 	close(fd);
 }
 
-/* Send the encryption key and encrypt the firmware */
-static void set_key(struct device *dev)
+/* Encrypt (or decrypt) some data */
+static void encrypt(const struct device *dev, struct content *info)
 {
-	static struct req_set_key req = {
-		.hdr.command = CMD_SET_KEY,
-		.hdr.data_len = 0x1e,
-	};
-	struct resp_set_key resp;
-	uint8_t xor_key[XOR_KEY_LEN] = {};
 	uint8_t *p;
-	int ret;
+	int i;
+
+	p = info->buf;
+	for (i = 0; i < info->len; i++) {
+		*p++ ^= dev->xor_key[i % XOR_KEY_LEN];
+	}
+
+	info->encrypted = !info->encrypted;
+}
+
+/* Create the local key to encrypt the data to send */
+static void create_key(struct device *dev)
+{
 	uint8_t sum;
 	int i;
 
@@ -329,12 +333,25 @@ static void set_key(struct device *dev)
 		sum += dev->id[i];
 
 	for (i = 0; i < XOR_KEY_LEN; i++)
-		xor_key[i] = sum;
-	xor_key[7] += dev->profile->type;
+		dev->xor_key[i] = sum;
+	dev->xor_key[7] += dev->profile->type;
+}
+
+/* Send the encryption key */
+static void send_key(struct device *dev)
+{
+	static struct req_set_key req = {
+		.hdr.command = CMD_SET_KEY,
+		.hdr.data_len = 0x1e,
+	};
+	struct resp_set_key resp;
+	int ret;
+	uint8_t sum;
+	int i;
 
 	sum = 0;
 	for (i = 0; i < XOR_KEY_LEN; i++)
-		sum += xor_key[i];
+		sum += dev->xor_key[i];
 
 	ret = transfer(dev, &req, sizeof(struct req_hdr) + req.hdr.data_len,
 		       &resp, sizeof(resp));
@@ -343,16 +360,6 @@ static void set_key(struct device *dev)
 
 	if (resp.key_checksum != sum)
 		errx(EXIT_FAILURE, "The device refused the key");
-
-	/* Encrypt the firmware */
-	if (!dev->fw.encrypted) {
-		p = dev->fw.buf;
-		for (i = 0; i < dev->fw.len; i++) {
-			*p++ ^= xor_key[i % XOR_KEY_LEN];
-		}
-
-		dev->fw.encrypted = true;
-	}
 }
 
 /* read or write code flash */
@@ -537,12 +544,17 @@ int main(int argc, char *argv[])
 		errx(EXIT_FAILURE, "This bootloader version is not supported");
 	}
 
-	if (dev.fw.filename)
+	create_key(&dev);
+
+	if (do_code_flash || do_code_verify) {
 		load_file(&dev, &dev.fw);
+		encrypt(&dev, &dev.fw);
+
+		send_key(&dev);
+	}
 
 	if (do_code_flash) {
 		write_config(&dev);
-		set_key(&dev);
 
 		erase_code_flash(&dev);
 		write_code_flash(&dev);
@@ -551,8 +563,6 @@ int main(int argc, char *argv[])
 	}
 
 	if (do_code_verify) {
-		set_key(&dev);
-
 		verify_code_flash(&dev);
 
 		printf("Firmware is good\n");

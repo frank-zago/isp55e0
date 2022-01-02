@@ -2,6 +2,8 @@
 #define EP_OUT 0x02
 #define EP_IN 0x82
 
+#define XOR_KEY_LEN 8
+
 /* Profile of a specific CH device */
 struct ch_profile {
 	const char *name;
@@ -37,6 +39,7 @@ struct device {
 	uint32_t bv;		/* bootloader version */
 	uint8_t id[8];
 	uint8_t config_data[12];
+	uint8_t xor_key[XOR_KEY_LEN];
 	bool wait_reboot_resp;	/* wait for reboot command response */
 };
 
