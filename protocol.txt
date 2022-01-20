@@ -98,7 +98,7 @@ Request:
 Response:
 0040   a3 00 02 00 43 00                                 ....C.
 
-The host computes a random 8-byte XOR key and send it obfuscated to
+The host computes a random 8-byte XOR key and sends it obfuscated to
 the host. The request length and content varies each time.
 
 The 0x43 is a checksum of the key:
@@ -218,6 +218,6 @@ Similar to above, except for a few things.
   write. For some reason WCH tool disconnects the USB device, but this
   doesn't appear to be needed.
 
-- After flasing the last 56-byte block (or less than), the bootloader
+- After flashing the last 56-byte block (or less than), the bootloader
   must be sent a write with no data. Failing to do so results in a
   failed firmware check.
