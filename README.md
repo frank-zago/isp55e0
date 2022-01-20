@@ -1,4 +1,5 @@
 ISP-55e0 - An ISP flashing tool for the WCH CH55x, CH57x and CH32Fx
+===================================================================
 
 This tool is meant to flash the WinChipHead CH55x / CH57x / CH32Fx
 series, such as the CH551, CH552, CH554, CH559 or CH579, through USB
@@ -10,20 +11,23 @@ the name for that project.
 A few similar tools exist for the CH55x series, but all appear
 unmaintained and / or are without a proper license:
 
-  * https://github.com/rgwan/librech551
-  * https://github.com/NgoHungCuong/vnproch551
-  * https://github.com/LoveMHz/vnproch55x   (descendant of vnproch551)
-  * https://github.com/MarsTechHAN/ch552tool  (in python)
+  - https://github.com/rgwan/librech551
+  - https://github.com/NgoHungCuong/vnproch551
+  - https://github.com/LoveMHz/vnproch55x     (descendant of vnproch551)
+  - https://github.com/MarsTechHAN/ch552tool  (in python)
+  - https://github.com/juliuswwj/wchprog      (in python)
+  - https://github.com/SIGINT112/wchprog      (fork of wchprog, w/ serial support)
 
 So the wheel has to be re-invented.
 
-Tested on:
-- a CH551 with a bootloader version 2.3.1
-- a CH552 with a bootloader version 2.4.0
-- a CH554 with a bootloader version 2.4.0
-- a CH559 with a bootloader version 2.4.0
-- a CH579 with a bootloader version 2.8.0
-- a CH32F103C8T6 with a bootloader version 2.3.1
+isp55e0 has been tested on:
+
+  - a CH551 with a bootloader version 2.3.1
+  - a CH552 with a bootloader version 2.4.0
+  - a CH554 with a bootloader version 2.4.0
+  - a CH559 with a bootloader version 2.4.0
+  - a CH579 with a bootloader version 2.8.0
+  - a CH32F103C8T6 with a bootloader version 2.3.1
 
 
 Build
@@ -35,14 +39,14 @@ the "libusb-1.0-0-dev" package. In rpm world, it is usually called
 
 Type:
 
-  make
+>  make
 
 
 Usage
 -----
 
 Help:
-
+```
   ./isp55e0 --help
 
   ISP programmer for some WinChipHead MCUs
@@ -54,21 +58,31 @@ Help:
     --data-dump, -m     dump the data flash to a file
     --debug, -d         turn debug traces on
     --help, -h          this help
+```
 
 Query the device:
 
-  ./isp55e0
+>  ./isp55e0
 
 Flash some firmware:
 
-  ./isp55e0 -f fw.bin
+>  ./isp55e0 -f fw.bin
 
 Verify an existing firmware against a flashed firmware:
 
-  ./isp55e0 -c fw.bin
+>  ./isp55e0 -c fw.bin
 
 Note that if the verification fails, all subsequent verifications will
 fail. The chip has to be power cycled to fix the issue.
+
+
+On flashing iHex files
+----------------------
+
+iHex is not supported, but objcopy can be used to convert an iHex file
+to a regular raw file:
+
+>  objcopy -I ihex -O binary xxx.hex xxx.bin
 
 
 Note on the CH32F103C8T6 BluePill clone
