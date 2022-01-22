@@ -28,6 +28,7 @@ isp55e0 has been tested on:
   - a CH559 with a bootloader version 2.4.0
   - a CH579 with a bootloader version 2.8.0
   - a CH32F103C8T6 with a bootloader version 2.3.1
+  - a CH32F103C8T6 with a bootloader version 2.5.0
 
 
 Build
@@ -88,13 +89,13 @@ to a regular raw file:
 Note on the CH32F103C8T6 BluePill clone
 ---------------------------------------
 
-That chip has 2 USB ports, and only one is exposed. The USB port used
-by the bootloader connects to PB6 (D-) and PB7 (D+), while the
-breakout board only show the other USB port, which connects to PA11
-(D-) and PA12 (D+).
-
-There are some breakout boards with 2 USB ports, so soldering may not
-be needed on these.
+The CH32F103 chip has 2 USB ports. Some breakout boards have 1 USB
+port, while some have both. The USB port used by the bootloader is
+connected to PB6 (D-) and PB7 (D+), while the regular port is
+connected to PA11 (D-) and PA12 (D+). When only one port is present,
+some soldering will be needed to access the port. When the 2 ports are
+present, the bottom port is used by the bootloader and the top port is
+the regular one, compatible with the STM32F103 chip.
 
 
 Note on the firmware encryption
