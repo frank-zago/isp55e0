@@ -46,7 +46,7 @@ static const struct ch_profile profiles[] = {
 	{
 		.name = "CH552",
 		.family = 0x11,
-		.type = 0x54,
+		.type = 0x52,
 		.code_flash_size = 14336,
 		.data_flash_size = 128,
 		.mcu_id_len = 4,
@@ -64,7 +64,7 @@ static const struct ch_profile profiles[] = {
 	{
 		.name = "CH559",
 		.family = 0x11,
-		.type = 0x54,
+		.type = 0x59,
 		.code_flash_size = 61440,
 		.data_flash_size = 1024,
 		.mcu_id_len = 4,
