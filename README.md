@@ -22,6 +22,7 @@ So the wheel has to be re-invented.
 
 isp55e0 has been tested on:
 
+  - a CH549 with a bootloader version 2.4.0
   - a CH551 with a bootloader version 2.3.1
   - a CH552 with a bootloader version 2.3.1
   - a CH552 with a bootloader version 2.4.0
