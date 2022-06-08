@@ -40,8 +40,8 @@ static const struct ch_profile profiles[] = {
 		.type = 0x49,
 		.code_flash_size = 61440,
 		.data_flash_size = 1024,
-		.mcu_id_len = 4,
-		.xor_key_id_len = 4,
+		.mcu_id_len = 8,
+		.xor_key_id_len = 8,
 		.need_last_write = true,
 	},
 	{
