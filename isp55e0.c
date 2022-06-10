@@ -316,10 +316,12 @@ static void load_file(struct device *dev, struct content *info)
 	if (info->len > info->max_flash_size)
 		errx(EXIT_FAILURE, "Firmware cannot fit in flash");
 
-	info->buf = calloc(1, info->len);
+	info->buf = malloc(info->len);
 	if (info->buf == NULL)
 	    errx(EXIT_FAILURE, "Can't allocate %zd bytes for the firmware",
 		 info->len);
+
+	memset(info->buf, 0xff, info->len);
 
 	/* TODO: loop until all read, or use mmap instead. */
 	ret = read(fd, info->buf, statbuf.st_size);
