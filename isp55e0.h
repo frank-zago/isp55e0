@@ -11,8 +11,7 @@ struct ch_profile {
 	uint8_t type;		/* CH554 -> 0x54, ... */
 	uint8_t family;		/* CH55x-> 0x11, CH57x -> 0x13, ...*/
 
-	int mcu_id_len;		/* Number of byte in the unique ID */
-	int xor_key_id_len;	/* Number of ID bytes to use for encryption key */
+	int mcu_id_len;		/* Number of bytes in the unique ID */
 
 	int code_flash_size;
 	int data_flash_size;

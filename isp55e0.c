@@ -41,7 +41,6 @@ static const struct ch_profile profiles[] = {
 		.code_flash_size = 61440,
 		.data_flash_size = 1024,
 		.mcu_id_len = 8,
-		.xor_key_id_len = 8,
 		.need_last_write = true,
 	},
 	{
@@ -51,7 +50,6 @@ static const struct ch_profile profiles[] = {
 		.code_flash_size = 10240,
 		.data_flash_size = 128,
 		.mcu_id_len = 4,
-		.xor_key_id_len = 4,
 	},
 	{
 		.name = "CH552",
@@ -60,7 +58,6 @@ static const struct ch_profile profiles[] = {
 		.code_flash_size = 14336,
 		.data_flash_size = 128,
 		.mcu_id_len = 4,
-		.xor_key_id_len = 4,
 	},
 	{
 		.name = "CH554",
@@ -69,7 +66,6 @@ static const struct ch_profile profiles[] = {
 		.code_flash_size = 14336,
 		.data_flash_size = 128,
 		.mcu_id_len = 4,
-		.xor_key_id_len = 4,
 	},
 	{
 		.name = "CH559",
@@ -78,7 +74,6 @@ static const struct ch_profile profiles[] = {
 		.code_flash_size = 61440,
 		.data_flash_size = 1024,
 		.mcu_id_len = 4,
-		.xor_key_id_len = 4,
 	},
 	{
 		.name = "CH579",
@@ -87,7 +82,6 @@ static const struct ch_profile profiles[] = {
 		.code_flash_size = 256000,
 		.data_flash_size = 2048,
 		.mcu_id_len = 8,
-		.xor_key_id_len = 8, /* ID plus checksum byte */
 	},
 	{
 		.name = "CH32F103",
@@ -95,7 +89,6 @@ static const struct ch_profile profiles[] = {
 		.type = 0x3f,
 		.code_flash_size = 65536,
 		.mcu_id_len = 8,
-		.xor_key_id_len = 8,
 		.need_remove_wp = true,
 		.need_last_write = true,
 	},
@@ -244,7 +237,7 @@ static void read_config(struct device *dev)
 		errx(EXIT_FAILURE, "Can't get the device configuration");
 
 	dev->bv = be32toh(resp.bootloader_version);
-	memcpy(dev->id, resp.id, dev->profile->xor_key_id_len);
+	memcpy(dev->id, resp.id, dev->profile->mcu_id_len);
 	memcpy(dev->config_data, resp.config_data, sizeof(dev->config_data));
 }
 
@@ -352,7 +345,7 @@ static void create_key(struct device *dev)
 	int i;
 
 	sum = 0;
-	for (i = 0; i < dev->profile->xor_key_id_len; i++)
+	for (i = 0; i < dev->profile->mcu_id_len; i++)
 		sum += dev->id[i];
 
 	for (i = 0; i < XOR_KEY_LEN; i++)
