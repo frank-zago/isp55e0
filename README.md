@@ -28,6 +28,7 @@ isp55e0 has been tested on:
   - a CH552 with a bootloader version 2.4.0
   - a CH554 with a bootloader version 2.4.0
   - a CH559 with a bootloader version 2.4.0
+  - a CH573 with a bootloader version 2.8.0
   - a CH579 with a bootloader version 2.8.0
   - a CH32F103C8T6 with a bootloader version 2.3.1
   - a CH32F103C8T6 with a bootloader version 2.5.0
