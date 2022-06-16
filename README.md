@@ -20,6 +20,9 @@ unmaintained and / or are without a proper license:
 
 So the wheel has to be re-invented.
 
+See also `wchisp` (https://github.com/ch32-rs/wchisp) which is a new
+supported tool, written in rust, and with a license.
+
 isp55e0 has been tested on:
 
   - a CH549 with a bootloader version 2.4.0
