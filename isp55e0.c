@@ -100,6 +100,14 @@ static const struct ch_profile profiles[] = {
 		.need_remove_wp = true,
 		.need_last_write = true,
 	},
+	{
+		.name = "CH582",
+		.family = 0x16,
+		.type = 0x82,
+		.code_flash_size = 458752,
+		.data_flash_size = 32768,
+		.mcu_id_len = 8,
+	},
 	{}
 };
 
