@@ -214,7 +214,7 @@ static void set_chip_profile(struct device *dev, uint8_t family, uint8_t type)
 		profile++;
 	}
 
-	errx(EXIT_FAILURE, "Device family %02x type %02x is not supported\n",
+	errx(EXIT_FAILURE, "Device family 0x%02x type 0x%02x is not supported\n",
 	     family, type);
 }
 
