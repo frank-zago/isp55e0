@@ -101,6 +101,15 @@ static const struct ch_profile profiles[] = {
 		.need_last_write = true,
 	},
 	{
+		.name = "CH32V103",
+		.family = 0x15,
+		.type = 0x3f,
+		.code_flash_size = 65536,
+		.mcu_id_len = 8,
+		.need_remove_wp = true,
+		.need_last_write = true,
+	},
+	{
 		.name = "CH582",
 		.family = 0x16,
 		.type = 0x82,
@@ -697,6 +706,7 @@ int main(int argc, char *argv[])
 		break;
 
 	case 0x020500:
+	case 0x020600:
 	case 0x020800:
 		dev.wait_reboot_resp = true;
 		break;
