@@ -18,6 +18,7 @@ struct ch_profile {
 
 	bool need_remove_wp;	/* remove CH32 write protect */
 	bool need_last_write;	/* chip needs an empty write */
+	bool clear_cfg_rom_read; /* Flashing will fail if this bit is set */
 };
 
 /* Content of either a file or one of the flash section */

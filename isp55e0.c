@@ -90,6 +90,7 @@ static const struct ch_profile profiles[] = {
 		.code_flash_size = 256000,
 		.data_flash_size = 2048,
 		.mcu_id_len = 8,
+		.clear_cfg_rom_read = true,
 	},
 	{
 		.name = "CH32F103",
@@ -281,6 +282,13 @@ static void write_config(struct device *dev)
 
 	if (dev->profile->need_remove_wp && req.config_data[0] == 0xff)
 		req.config_data[0] = 0xa5;
+
+	if (dev->profile->clear_cfg_rom_read) {
+		/* CH579 - the CFG_ROM_READ must be cleared, otherwise
+		 * flashing will fail.
+		 */
+		req.config_data[8] &= ~0x80;
+	}
 
 	ret = transfer(dev, &req, sizeof(req), &resp, sizeof(resp));
 	if (ret)
