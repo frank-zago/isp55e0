@@ -716,6 +716,7 @@ int main(int argc, char *argv[])
 	case 0x020500:
 	case 0x020600:
 	case 0x020800:
+	case 0x020900:
 		dev.wait_reboot_resp = true;
 		break;
 
