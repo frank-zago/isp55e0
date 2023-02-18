@@ -93,7 +93,7 @@ static const struct ch_profile profiles[] = {
 		.clear_cfg_rom_read = true,
 	},
 	{
-		.name = "CH32F103",
+		.name = "CH32F103R8T6", /* also CH32F103C8U6 */
 		.family = 0x14,
 		.type = 0x3f,
 		.code_flash_size = 65536,
@@ -102,7 +102,7 @@ static const struct ch_profile profiles[] = {
 		.need_last_write = true,
 	},
 	{
-		.name = "CH32V103",
+		.name = "CH32V103C8T6",
 		.family = 0x15,
 		.type = 0x3f,
 		.code_flash_size = 65536,
