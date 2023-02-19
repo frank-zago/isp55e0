@@ -52,6 +52,18 @@ Type:
 >  make
 
 
+UDEV configuration
+------------------
+
+By default, a linux system will only allow the root user to program
+these chips. If you'd like to program these chips as a regular user, a
+udev rule must be added. As root, issue the following command:
+
+    cp 99-wch-isp.rules /etc/udev/rules.d/99-wch-isp.rules
+
+Edit this file as desired.
+
+
 Usage
 -----
 

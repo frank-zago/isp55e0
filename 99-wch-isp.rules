@@ -1,0 +1,7 @@
+# WinChipHead CHxxx series in programming mode
+
+# Let any user on the system program these chips
+SUBSYSTEMS=="usb" ATTRS{idVendor}=="4348" ATTRS{idProduct}=="55e0" MODE="0666"
+
+# or only users in a particular 'wchisp' group. The group should be added.
+# SUBSYSTEMS=="usb" ATTRS{idVendor}=="4348" ATTRS{idProduct}=="55e0" MODE="0660" GROUP="wchisp"
