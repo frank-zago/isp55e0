@@ -120,6 +120,33 @@ static const struct ch_profile profiles[] = {
 		.need_last_write = true,
 	},
 	{
+		.name = "CH32V307VCT6",
+		.family = 0x17,
+		.type = 0x70,
+		.code_flash_size = 262144,
+		.mcu_id_len = 8,
+		.need_remove_wp = true,
+		.need_last_write = true,
+	},
+	{
+		.name = "CH32V307RCT6",
+		.family = 0x17,
+		.type = 0x71,
+		.code_flash_size = 262144,
+		.mcu_id_len = 8,
+		.need_remove_wp = true,
+		.need_last_write = true,
+	},
+	{
+		.name = "CH32V307WCU6",
+		.family = 0x17,
+		.type = 0x73,
+		.code_flash_size = 262144,
+		.mcu_id_len = 8,
+		.need_remove_wp = true,
+		.need_last_write = true,
+	},
+	{
 		.name = "CH582",
 		.family = 0x16,
 		.type = 0x82,
@@ -743,12 +770,10 @@ int main(int argc, char *argv[])
 	if (do_data_flash || do_data_verify)
 		load_file(&dev, &dev.data);
 
-	if (do_code_flash || do_code_verify || do_data_flash)
-		send_key(&dev);
-
 	/* Code flash */
 
 	if (do_code_flash) {
+		send_key(&dev);
 		write_config(&dev);
 
 		erase_code_flash(&dev);
@@ -758,6 +783,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (do_code_verify) {
+		send_key(&dev);
 		verify_code_flash(&dev);
 
 		printf("Firmware is good\n");
@@ -766,6 +792,7 @@ int main(int argc, char *argv[])
 	/* Data flash */
 
 	if (do_data_flash) {
+		send_key(&dev);
 		encrypt(&dev, &dev.data);
 		erase_data_flash(&dev);
 		write_data_flash(&dev);

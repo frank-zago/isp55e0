@@ -38,6 +38,7 @@ isp55e0 has been tested on:
   - a CH32F103C8T6 with a bootloader version 2.5.0
   - a CH32V103C8T6 with a bootloader version 2.6.0
   - a CH32V203G8R6 with a bootloader version 2.6.0
+  - a CH32V307VCT6 with a bootloader version 2.9.0
 
 
 Build
@@ -86,7 +87,7 @@ Query the device:
 
 >  ./isp55e0
 
-Flash some firmware:
+Flash some firmware, which will also read back to verify it:
 
 >  ./isp55e0 -f fw.bin
 
