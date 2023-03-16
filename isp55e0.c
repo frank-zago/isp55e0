@@ -35,15 +35,6 @@
 /* Profile of supported chips */
 static const struct ch_profile profiles[] = {
 	{
-		.name = "CH549",
-		.family = 0x12,
-		.type = 0x49,
-		.code_flash_size = 61440,
-		.data_flash_size = 1024,
-		.mcu_id_len = 8,
-		.need_last_write = true,
-	},
-	{
 		.name = "CH551",
 		.family = 0x11,
 		.type = 0x51,
@@ -76,6 +67,15 @@ static const struct ch_profile profiles[] = {
 		.mcu_id_len = 4,
 	},
 	{
+		.name = "CH549",
+		.family = 0x12,
+		.type = 0x49,
+		.code_flash_size = 61440,
+		.data_flash_size = 1024,
+		.mcu_id_len = 8,
+		.need_last_write = true,
+	},
+	{
 		.name = "CH573",
 		.family = 0x13,
 		.type = 0x73,
@@ -91,14 +91,6 @@ static const struct ch_profile profiles[] = {
 		.data_flash_size = 2048,
 		.mcu_id_len = 8,
 		.clear_cfg_rom_read = true,
-	},
-	{
-		.name = "CH582",
-		.family = 0x16,
-		.type = 0x82,
-		.code_flash_size = 458752,
-		.data_flash_size = 32768,
-		.mcu_id_len = 8,
 	},
 	{
 		.name = "CH32F103C6T6",
@@ -180,6 +172,14 @@ static const struct ch_profile profiles[] = {
 		.mcu_id_len = 8,
 		.need_remove_wp = true,
 		.need_last_write = true,
+	},
+	{
+		.name = "CH582",
+		.family = 0x16,
+		.type = 0x82,
+		.code_flash_size = 458752,
+		.data_flash_size = 32768,
+		.mcu_id_len = 8,
 	},
 	{
 		.name = "CH32V303VCT6",
