@@ -27,7 +27,16 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <errno.h>
+
+#ifdef WIN32
+#include "compat-err.h"
+
+#define be32toh _byteswap_ulong
+
+#else
 #include <err.h>
+#endif
+
 #include <libusb-1.0/libusb.h>
 
 #include "isp55e0.h"
@@ -645,9 +654,12 @@ static void open_usb_device(struct device *dev)
 	if (dev->usb_h == NULL)
 		errx(EXIT_FAILURE, "No CH5xx devices found in ISP mode");
 
+#ifndef WIN32
+	/* it seems WIN32 libusb doesn't support this */
 	ret = libusb_set_auto_detach_kernel_driver(dev->usb_h, 1);
 	if (ret)
 		errx(EXIT_FAILURE, "Can't detach the device from the kernel");
+#endif
 
 	ret = libusb_claim_interface(dev->usb_h, 0);
 	if (ret)
@@ -798,8 +810,14 @@ static void load_file(struct device *dev, struct content *info)
 	struct stat statbuf;
 	int ret;
 	int fd;
+	off_t total_read = 0;
+	int open_flags = O_RDONLY;
 
-	fd = open(info->filename, O_RDONLY);
+#ifdef WIN32
+	open_flags |= O_BINARY;
+#endif
+
+	fd = open(info->filename, open_flags);
 	if (fd == -1)
 		err(EXIT_FAILURE, "Can't open the firmware file");
 
@@ -821,10 +839,16 @@ static void load_file(struct device *dev, struct content *info)
 
 	memset(info->buf, 0xff, info->len);
 
-	/* TODO: loop until all read, or use mmap instead. */
-	ret = read(fd, info->buf, statbuf.st_size);
-	if (ret != statbuf.st_size)
-		err(EXIT_FAILURE, "Can't read firmware file");
+	while (total_read < statbuf.st_size) {
+		off_t remaining = statbuf.st_size - total_read;
+		int ret = read(fd, info->buf + total_read, remaining);
+		if (dev->debug)
+			printf("info->buf %p total_read %ld statbuf.st_size %ld remaining %ld read %d\n ", info->buf, total_read, statbuf.st_size, remaining, ret);
+		if (ret < 0) {
+			err(EXIT_FAILURE, "Can't read firmware file");
+		}
+		total_read += ret;
+	}
 
 	close(fd);
 }
