@@ -35,6 +35,8 @@
 
 #else
 #include <err.h>
+#include <termios.h>
+#include <sys/ioctl.h>
 #endif
 
 #ifdef __APPLE__
@@ -59,6 +61,9 @@ static const struct option long_options[] = {
 	{ "data-flash", required_argument, 0,  'k' },
 	{ "data-verify", required_argument, 0,  'l' },
 	{ "data-dump", required_argument, 0,  'm' },
+#ifndef WIN32
+	{ "port", required_argument, 0,  'p' },
+#endif
 	{ 0, 0, 0, 0 }
 };
 
@@ -66,6 +71,9 @@ static void usage(void)
 {
 	printf("ISP programmer for some WinChipHead MCUs\n");
 	printf("Options:\n");
+#ifndef WIN32
+	printf("  --port, -p          use serial port instead of usb\n");
+#endif
 	printf("  --code-flash, -f    firmware to flash\n");
 	printf("  --code-verify, -c   verify existing firwmare\n");
 	printf("  --data-flash, -k    data to flash\n");
@@ -89,6 +97,80 @@ static void hexdump(const char *name, const void *data, int len)
 	}
 	printf("\n");
 }
+
+#ifndef WIN32
+static void open_serial_device(struct device *dev, char *port)
+{
+	int ret;
+	struct termios options;
+	int status;
+	speed_t baud = B115200;
+
+	if ((dev->fd = open(port, O_RDWR | O_NOCTTY)) == -1)
+		errx(EXIT_FAILURE, "Error occured while opening serial port '%s'", port);
+
+	ret = fcntl(dev->fd, F_SETFL, O_RDWR) ;
+	if (ret < 0)
+		goto fail;
+
+	ret = tcgetattr(dev->fd, &options);
+	if (ret < 0)
+		goto fail;
+
+	cfmakeraw(&options);
+
+	ret = cfsetispeed(&options, baud);
+	if (ret < 0)
+		goto fail;
+
+	ret = cfsetospeed(&options, baud);
+	if (ret < 0)
+		goto fail;
+
+	options.c_cflag |= (CLOCAL | CREAD) ;
+	options.c_cflag &= ~(PARENB | CSTOPB | CSIZE) ;
+	options.c_cflag |= CS8 ;
+	options.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG) ;
+	options.c_oflag &= ~OPOST ;
+	/* Turn off s/w flow ctrl */
+	options.c_iflag &= ~(IXON | IXOFF | IXANY);
+	/* Disable any special handling of received bytes */
+	options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL);
+
+	options.c_cc [VMIN]  = 0;
+	options.c_cc [VTIME] = SERIAL_TIMEOUT;
+
+	ret = tcsetattr(dev->fd, TCSANOW, &options) ;
+	if (ret < 0)
+		goto fail;
+
+	ret = ioctl(dev->fd, TIOCMGET, &status);
+	if (ret < 0)
+		goto fail;
+
+	status |= TIOCM_DTR;
+	status |= TIOCM_RTS;
+
+	ret = ioctl(dev->fd, TIOCMSET, &status);
+	if (ret < 0)
+		goto fail;
+
+	return;
+fail:
+	errx(EXIT_FAILURE, "Error occured while configuring serial port");
+}
+
+static unsigned char serial_crc(unsigned char *req, int req_len)
+{
+	unsigned char crc = 0;
+
+	for(int i=0;i<req_len;i++){
+		crc += req[i];
+	}
+
+	return crc;
+}
+#endif
 
 /* Open and claim the USB device */
 static void open_usb_device(struct device *dev)
@@ -123,22 +205,62 @@ static int transfer(struct device *dev, void *req, int req_len,
 {
 	int len;
 	int ret;
+#ifndef WIN32
+	int serial_transmitted;
+	unsigned char req_serial_prefix[2] = {SERIAL_REQ_MAGIC1, SERIAL_REQ_MAGIC2};
+	unsigned char req_serial_crc[1] = {serial_crc(req, req_len)};
+	unsigned char resp_serial_prefix[2];
+	unsigned char resp_serial_crc[1];
 
-	ret = libusb_bulk_transfer(dev->usb_h, EP_OUT, req, req_len,
+	if (dev->fd) {
+		/* Serial port case */
+		serial_transmitted = write(dev->fd, req_serial_prefix, sizeof(req_serial_prefix));
+		serial_transmitted += write(dev->fd, req, req_len);
+		serial_transmitted += write(dev->fd, req_serial_crc, sizeof(req_serial_crc));
+
+		if (serial_transmitted != (sizeof(req_serial_prefix)+req_len+sizeof(req_serial_crc)))
+			errx(EXIT_FAILURE, "Serial port write error");
+
+		if (dev->debug)
+			hexdump("request", req, req_len);
+
+		serial_transmitted = read(dev->fd, resp_serial_prefix, sizeof(resp_serial_prefix));
+		if (serial_transmitted != sizeof(resp_serial_prefix) || resp_serial_prefix[0] != SERIAL_RESP_MAGIC1 || resp_serial_prefix[1] != SERIAL_RESP_MAGIC2)
+			errx(EXIT_FAILURE, "Serial port response magic read error");
+
+		serial_transmitted = read(dev->fd, resp, resp_len);
+		if (serial_transmitted != resp_len)
+			errx(EXIT_FAILURE, "Serial port response read error");
+
+		serial_transmitted = read(dev->fd, resp_serial_crc, sizeof(resp_serial_crc));
+		if (serial_transmitted != sizeof(resp_serial_crc) || resp_serial_crc[0] != serial_crc(resp, resp_len))
+			errx(EXIT_FAILURE, "Serial port response crc read error");
+
+		if (dev->debug)
+			hexdump("response", resp, resp_len);
+
+	} else {
+#endif
+		/* USB case */
+		ret = libusb_bulk_transfer(dev->usb_h, EP_OUT, req, req_len,
 				   &len, USB_TIMEOUT);
-	if (ret)
-		return -EIO;
+		if (ret)
+			return -EIO;
 
-	if (dev->debug)
-		hexdump("request", req, len);
+		if (dev->debug)
+			hexdump("request", req, len);
 
-	ret = libusb_bulk_transfer(dev->usb_h, EP_IN, resp, resp_len,
+		ret = libusb_bulk_transfer(dev->usb_h, EP_IN, resp, resp_len,
 				   &len, USB_TIMEOUT);
-	if (ret)
-		return -EIO;
+		if (ret)
+			return -EIO;
 
-	if (dev->debug)
-		hexdump("response", resp, len);
+		if (dev->debug)
+			hexdump("response", resp, len);
+
+#ifndef WIN32
+	}
+#endif
 
 	return 0;
 }
@@ -584,12 +706,18 @@ int main(int argc, char *argv[])
 	bool do_data_dump = false;
 	int c;
 	int i;
+#ifndef WIN32
+	char *port = NULL;
+#endif
 
 	while (1) {
 		int option_index = 0;
 
-		c = getopt_long(argc, argv, "c:df:hk:l:m:",
-				long_options, &option_index);
+		c = getopt_long(argc, argv, "c:df:hk:l:m:"
+#ifndef WIN32
+				"p:"
+#endif
+				, long_options, &option_index);
 		if (c == -1)
 			break;
 
@@ -625,6 +753,11 @@ int main(int argc, char *argv[])
 			dev.data_dump.filename = optarg;
 			do_data_dump = true;
 			break;
+#ifndef WIN32
+		case 'p':
+			port = optarg;
+			break;
+#endif
 		case 'h':
 			usage();
 			return EXIT_SUCCESS;
@@ -636,7 +769,13 @@ int main(int argc, char *argv[])
 	if (optind < argc)
 		errx(EXIT_FAILURE, "Extra argument: %s", argv[optind]);
 
-	open_usb_device(&dev);
+#ifndef WIN32
+	if (port)
+		open_serial_device(&dev, port);
+	else
+#endif
+		open_usb_device(&dev);
+
 	read_chip_type(&dev);
 	printf("Found device %s\n", dev.profile->name);
 
