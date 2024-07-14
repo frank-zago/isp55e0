@@ -3,7 +3,7 @@ ISP-55e0 - An ISP flashing tool for the WCH CH55x, CH57x and CH32Fx
 
 This tool is meant to flash the WinChipHead CH55x / CH57x / CH32Fx
 series, such as the CH551, CH552, CH554, CH559 or CH579, through USB
-on Linux.
+or serial port on Linux.
 
 When set in ISP mode, the chip creates a 4348:55e0 USB device, hence
 the name for that project.
@@ -25,22 +25,24 @@ supported tool, written in rust, and with a license.
 
 isp55e0 has been tested on:
 
-  - a CH549 with a bootloader version 2.4.0
-  - a CH551 with a bootloader version 2.3.1
-  - a CH552 with a bootloader version 2.3.1
-  - a CH552 with a bootloader version 2.4.0
-  - a CH554 with a bootloader version 2.4.0
-  - a CH559 with a bootloader version 2.4.0
-  - a CH573 with a bootloader version 2.8.0
-  - a CH579 with a bootloader version 2.8.0
-  - a CH582 with a bootloader version 2.4.0
-  - a CH583 with a bootloader version 2.4.0
-  - a CH32F103C8T6 with a bootloader version 2.3.1
-  - a CH32F103C8T6 with a bootloader version 2.5.0
-  - a CH32V103C8T6 with a bootloader version 2.6.0
-  - a CH32V203C8T6 with a bootloader version 2.7.0
-  - a CH32V203G8R6 with a bootloader version 2.6.0
-  - a CH32V307VCT6 with a bootloader version 2.9.0
+|Chip        |Bootloader|USB|Serial|
+|------------|----------|---|------|
+|CH549       |2.4.0     |+  |      |
+|CH551       |2.3.1     |+  |      |
+|CH552       |2.3.1     |+  |      |
+|CH552       |2.4.0     |+  |      |
+|CH554       |2.4.0     |+  |      |
+|CH559       |2.4.0     |+  |      |
+|CH573       |2.8.0     |+  |      |
+|CH579       |2.8.0     |+  |      |
+|CH582       |2.4.0     |+  |+     |
+|CH583       |2.4.0     |+  |      |
+|CH32F103C8T6|2.3.1     |+  |      |
+|CH32F103C8T6|2.5.0     |+  |      |
+|CH32V103C8T6|2.6.0     |+  |      |
+|CH32V203C8T6|2.7.0     |+  |      |
+|CH32V203G8R6|2.6.0     |+  |      |
+|CH32V307VCT6|2.9.0     |+  |      |
 
 
 Build
@@ -76,6 +78,7 @@ Help:
 
   ISP programmer for some WinChipHead MCUs
   Options:
+    --port, -p          use serial port instead of usb
     --code-flash, -f    firmware to flash
     --code-verify, -c   verify existing firwmare
     --data-flash, -k    data to flash

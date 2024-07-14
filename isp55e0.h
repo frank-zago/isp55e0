@@ -4,6 +4,12 @@
 
 #define XOR_KEY_LEN 8
 
+/* Serial port wrapper magics */
+#define SERIAL_REQ_MAGIC1 (0x57)
+#define SERIAL_REQ_MAGIC2 (0xAB)
+#define SERIAL_RESP_MAGIC1 (0x55)
+#define SERIAL_RESP_MAGIC2 (0xAA)
+
 /* Profile of a specific CH device */
 struct ch_profile {
 	const char *name;
@@ -43,10 +49,14 @@ struct device {
 	uint8_t config_data[12];
 	uint8_t xor_key[XOR_KEY_LEN];
 	bool wait_reboot_resp;	/* wait for reboot command response */
+#ifndef WIN32
+        int fd; /* serial port descriptor */
+#endif
 };
 
 /* Enough to erase the flash. */
-#define USB_TIMEOUT 5000
+#define USB_TIMEOUT 5000 // milliseconds
+#define SERIAL_TIMEOUT 50 // deciseconds
 
 #define CMD_CHIP_TYPE        0xa1
 #define CMD_REBOOT           0xa2
