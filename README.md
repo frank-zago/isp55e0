@@ -54,6 +54,19 @@ Type:
 
 >  make
 
+### macOS
+
+1. install `libusb`
+
+   ```bash
+   brew install libusb
+   ```
+
+2. build
+
+   ```bash
+   clang -O2 -Wall -Werror -I /opt/homebrew/include -L /opt/homebrew/lib -lusb-1.0 -o isp55e0 isp55e0.c
+   ```
 
 UDEV configuration
 ------------------
