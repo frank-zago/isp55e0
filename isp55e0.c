@@ -843,7 +843,7 @@ static void load_file(struct device *dev, struct content *info)
 		off_t remaining = statbuf.st_size - total_read;
 		int ret = read(fd, info->buf + total_read, remaining);
 		if (dev->debug)
-			printf("info->buf %p total_read %ld statbuf.st_size %ld remaining %ld read %d\n ", info->buf, total_read, statbuf.st_size, remaining, ret);
+			printf("info->buf %p total_read %lld statbuf.st_size %lld remaining %lld read %d\n ", info->buf, (long long)total_read, (long long)statbuf.st_size, (long long)remaining, ret);
 		if (ret < 0) {
 			err(EXIT_FAILURE, "Can't read firmware file");
 		}
