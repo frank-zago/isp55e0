@@ -37,6 +37,12 @@
 #include <err.h>
 #endif
 
+#ifdef __APPLE__
+#include <libkern/OSByteOrder.h>
+
+#define be32toh OSSwapBigToHostInt32
+#endif
+
 #include <libusb-1.0/libusb.h>
 
 #include "isp55e0.h"
