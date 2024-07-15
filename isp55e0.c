@@ -853,8 +853,8 @@ static void load_file(struct device *dev, struct content *info)
 	close(fd);
 }
 
-/* Encrypt (or decrypt) some data */
-static void encrypt(const struct device *dev, struct content *info)
+/* Encrypt or decrypt some data */
+static void encrypt_or_decrypt(const struct device *dev, struct content *info)
 {
 	uint8_t *p;
 	int i;
@@ -1073,7 +1073,7 @@ static void verify_data_flash(struct device *dev)
 		/* The data was just written previously to the flash,
 		 * and encrypted. It needs to been decrypted now so
 		 * the comparison can happen. */
-		encrypt(dev, &dev->data);
+		encrypt_or_decrypt(dev, &dev->data);
 	}
 
 	if (memcmp(dev->data.buf, dev->data_dump.buf, dev->data.len) != 0)
@@ -1225,7 +1225,7 @@ int main(int argc, char *argv[])
 
 	if (do_code_flash || do_code_verify) {
 		load_file(&dev, &dev.fw);
-		encrypt(&dev, &dev.fw);
+		encrypt_or_decrypt(&dev, &dev.fw);
 	}
 
 	if (do_data_flash || do_data_verify)
@@ -1254,7 +1254,7 @@ int main(int argc, char *argv[])
 
 	if (do_data_flash) {
 		send_key(&dev);
-		encrypt(&dev, &dev.data);
+		encrypt_or_decrypt(&dev, &dev.data);
 		erase_data_flash(&dev);
 		write_data_flash(&dev);
 
