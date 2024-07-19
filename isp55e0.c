@@ -101,6 +101,8 @@ static void open_usb_device(struct device *dev)
 
 	dev->usb_h = libusb_open_device_with_vid_pid(NULL, 0x4348, 0x55e0);
 	if (dev->usb_h == NULL)
+		dev->usb_h = libusb_open_device_with_vid_pid(NULL, 0x1a86, 0x55e0);
+	if (dev->usb_h == NULL)
 		errx(EXIT_FAILURE, "No CH5xx devices found in ISP mode");
 
 #ifndef WIN32
