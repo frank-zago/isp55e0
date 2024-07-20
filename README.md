@@ -5,7 +5,7 @@ This tool is meant to flash the WinChipHead CH55x / CH57x / CH32Fx
 series, such as the CH551, CH552, CH554, CH559 or CH579, through USB
 or serial port on Linux.
 
-When set in ISP mode, the chip creates a 4348:55e0 USB device, hence
+When set in ISP mode, the chip creates a 4348:55e0 or 1a86:55e0 USB device, hence
 the name for that project.
 
 A few similar tools exist for the CH55x series, but all appear
@@ -43,7 +43,8 @@ isp55e0 has been tested on:
 |CH32V203C8T6|2.7.0     |+  |      |
 |CH32V203G8R6|2.6.0     |+  |      |
 |CH32V307VCT6|2.9.0     |+  |      |
-
+|CH32X035F7P6|2.6.0     |+  |      |
+|CH32X035F8U6|2.6.0     |+  |      |
 
 Build
 -----

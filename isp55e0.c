@@ -601,6 +601,24 @@ static const struct ch_profile profiles[] = {
 		.need_remove_wp = true,
 		.need_last_write = true,
 	},
+	{
+		.name = "CH32X035F7P6",
+		.family = 0x23,
+		.type = 0x57,
+		.code_flash_size = 63488,
+		.mcu_id_len = 8,
+		.need_remove_wp = true,
+		.need_last_write = true,
+	},
+	{
+		.name = "CH32X035F8U6",
+		.family = 0x23,
+		.type = 0x5e,
+		.code_flash_size = 63488,
+		.mcu_id_len = 8,
+		.need_remove_wp = true,
+		.need_last_write = true,
+        },
 	{}
 };
 
@@ -733,8 +751,11 @@ static void open_usb_device(struct device *dev)
 		errx(EXIT_FAILURE, "Can't initialize USB");
 
 	dev->usb_h = libusb_open_device_with_vid_pid(NULL, 0x4348, 0x55e0);
-	if (dev->usb_h == NULL)
-		errx(EXIT_FAILURE, "No CH5xx devices found in ISP mode");
+	if (dev->usb_h == NULL) {
+		dev->usb_h = libusb_open_device_with_vid_pid(NULL, 0x1a86, 0x55e0);
+		if (dev->usb_h == NULL)
+			errx(EXIT_FAILURE, "No WCH devices found in ISP mode");
+	}
 
 #ifndef WIN32
 	/* it seems WIN32 libusb doesn't support this */
