@@ -137,7 +137,7 @@ static void open_serial_device(struct device *dev, char *port)
 	/* Disable any special handling of received bytes */
 	options.c_iflag &= ~(IGNBRK | BRKINT | PARMRK | ISTRIP | INLCR | IGNCR | ICRNL);
 
-	options.c_cc [VMIN]  = 0;
+	options.c_cc [VMIN]  = 64;
 	options.c_cc [VTIME] = SERIAL_TIMEOUT;
 
 	ret = tcsetattr(dev->fd, TCSANOW, &options) ;
