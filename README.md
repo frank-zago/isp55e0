@@ -59,7 +59,7 @@ Type:
 
 Build it without libusb:
 
->  make WITH_USB=0 CC=/path/to/bin/gcc
+>  make WITHOUT_USB=1 CC=/path/to/bin/gcc
 
 ### macOS
 

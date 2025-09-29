@@ -45,7 +45,7 @@
 #define be32toh OSSwapBigToHostInt32
 #endif
 
-#if(defined(WITH_USB) && (WITH_USB == 1))
+#if(!defined(WITHOUT_USB) || (WITHOUT_USB == 0))
 #include <libusb-1.0/libusb.h>
 #endif
 
@@ -272,7 +272,7 @@ static void change_uart_baudrate(struct device *dev)
 }
 #endif
 
-#if(defined(WITH_USB) && (WITH_USB == 1))
+#if(!defined(WITHOUT_USB) || (WITHOUT_USB == 0))
 /* Open and claim the USB device */
 static void open_usb_device(struct device *dev)
 {
@@ -342,7 +342,7 @@ static int transfer(struct device *dev, void *req, int req_len,
 	} else {
 #endif
 
-#if(defined(WITH_USB) && (WITH_USB == 1))
+#if(!defined(WITHOUT_USB) || (WITHOUT_USB == 0))
 		int len;
 		int ret;
 		/* USB case */
@@ -935,8 +935,8 @@ int main(int argc, char *argv[])
 	}
 	else
 #endif
-	
-#if(defined(WITH_USB) && (WITH_USB == 1))
+
+#if(!defined(WITHOUT_USB) || (WITHOUT_USB == 0))
 		open_usb_device(&dev);
 #else
 		printf("Serial port is not specified\n");

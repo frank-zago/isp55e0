@@ -3,14 +3,16 @@ SRCS = isp55e0.c
 OBJS = $(SRCS:.c=.o)
 
 CC ?= gcc
-WITH_USB ?= 1
+WITHOUT_USB ?= 0
 
-ifeq ($(WITH_USB), 1)
+ifeq ($(WITHOUT_USB), 0)
 LDLIBS = -lusb-1.0
 endif
 
 CFLAGS = -O2 -Wall -Werror
-CFLAGS += -DWITH_USB=${WITH_USB}
+ifeq ($(WITHOUT_USB), 1)
+CFLAGS += -DWITHOUT_USB=${WITHOUT_USB}
+endif
 
 .PHONY: all clean chips
 
@@ -18,7 +20,6 @@ all: $(TARGET)
 
 $(TARGET): $(OBJS)
 	$(CC) -o $(TARGET) $(OBJS) $(CFLAGS) $(LDLIBS)
-	@printf "  USB-support=${WITH_USB}\n"
 
 .c.o:
 	$(CC) $(CFLAGS)  -c $< -o $@
