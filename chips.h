@@ -519,7 +519,7 @@
 		.name = "CH32V208RBT6",
 		.family = 0x19,
 		.type = 0x81,
-		.code_flash_size = 131072,
+		.code_flash_size = 491520,
 		.mcu_id_len = 8,
 		.need_remove_wp = true,
 		.need_last_write = true,
